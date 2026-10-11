@@ -422,13 +422,30 @@
         };
 
         const triangleTemplates = [
+            // מקוריים
             { points: "100,56 40,160 160,160", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="100" y1="152" x2="100" y2="168" stroke="#ef4444" stroke-width="3"/><line x1="63" y1="104" x2="77" y2="112" stroke="#ef4444" stroke-width="3"/><line x1="123" y1="112" x2="137" y2="104" stroke="#ef4444" stroke-width="3"/>` },
             { points: "40,160 160,160 40,40", labels: ["ישר זווית", "שווה שוקיים"], marks: `<line x1="100" y1="152" x2="100" y2="168" stroke="#ef4444" stroke-width="3"/><line x1="32" y1="100" x2="48" y2="100" stroke="#ef4444" stroke-width="3"/><polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
             { points: "40,160 160,160 40,80", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
             { points: "100,80 20,120 180,120", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="56" y1="93" x2="64" y2="107" stroke="#ef4444" stroke-width="3"/><line x1="136" y1="107" x2="144" y2="93" stroke="#ef4444" stroke-width="3"/>` },
             { points: "140,60 20,140 180,140", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
             { points: "100,20 60,160 140,160", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="72" y1="88" x2="88" y2="92" stroke="#ef4444" stroke-width="3"/><line x1="112" y1="92" x2="128" y2="88" stroke="#ef4444" stroke-width="3"/>` },
-            { points: "80,20 20,160 160,160", labels: ["חד זווית", "שונה צלעות"], marks: `` }
+            { points: "80,20 20,160 160,160", labels: ["חד זווית", "שונה צלעות"], marks: `` },
+            
+            // חדשים: מסובבים והפוכים למניעת קיבעון
+            // שווה צלעות הפוך
+            { points: "40,56 160,56 100,160", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="100" y1="48" x2="100" y2="64" stroke="#ef4444" stroke-width="3"/><line x1="63" y1="112" x2="77" y2="104" stroke="#ef4444" stroke-width="3"/><line x1="123" y1="104" x2="137" y2="112" stroke="#ef4444" stroke-width="3"/>` },
+            // ישר זווית שווה שוקיים (זווית ישרה למטה מימין)
+            { points: "40,160 160,160 160,40", labels: ["ישר זווית", "שווה שוקיים"], marks: `<line x1="100" y1="152" x2="100" y2="168" stroke="#ef4444" stroke-width="3"/><line x1="152" y1="100" x2="168" y2="100" stroke="#ef4444" stroke-width="3"/><polyline points="140,160 140,140 160,140" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
+            // ישר זווית שונה צלעות (זווית ישרה למעלה משמאל)
+            { points: "40,40 160,40 40,120", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="40,60 60,60 60,40" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
+            // קהה זווית שווה שוקיים מצביע שמאלה
+            { points: "40,100 120,40 120,160", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="74" y1="62" x2="86" y2="78" stroke="#ef4444" stroke-width="3"/><line x1="74" y1="138" x2="86" y2="122" stroke="#ef4444" stroke-width="3"/>` },
+            // קהה זווית שונה צלעות הפוך
+            { points: "20,140 180,140 160,80", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
+            // חד זווית שווה שוקיים מצביע ימינה
+            { points: "160,100 40,40 40,160", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="96" y1="78" x2="104" y2="62" stroke="#ef4444" stroke-width="3"/><line x1="96" y1="122" x2="104" y2="138" stroke="#ef4444" stroke-width="3"/>` },
+            // חד זווית שונה צלעות בזווית מוזרה
+            { points: "60,40 140,160 20,120", labels: ["חד זווית", "שונה צלעות"], marks: `` }
         ];
 
         window.generateTriangleSet = function() {
