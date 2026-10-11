@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>אתגר החידון והפוקימונים</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Rubik', sans-serif;
+            background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .bounce-in {
+            animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .shake {
+            animation: shake 0.4s ease-in-out both;
+        }
+        .shake-hard {
+            animation: shakeHard 0.2s ease-in-out infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        @keyframes shakeHard {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(-15px) rotate(-10deg); }
+            75% { transform: translateX(15px) rotate(10deg); }
+        }
+
+        /* Added for Booster Pack Animation */
+        .booster-pack {
+            width: 160px; height: 240px;
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            overflow: hidden;
+            border: 4px solid rgba(255,255,255,0.5);
+            z-index: 10;
+        }
+        .booster-pack:hover { transform: translateY(-10px) scale(1.05); }
+        .booster-pack::after {
+            content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.4), transparent);
+            transform: rotate(45deg); animation: shine 3s infinite;
+        }
+        @keyframes shine { 0% { left: -100%; } 100% { left: 100%; } }
+        .pack-basic { background: linear-gradient(135deg, #9ca3af, #6b7280); color: white; }
+        .pack-super { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; }
+        .pack-ultra { background: linear-gradient(135deg, #eab308, #b45309); color: white; }
+        .pack-title { font-size: 24px; font-weight: bold; text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 2; }
+        
+        .rip-open { animation: ripOpen 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes ripOpen {
+            0% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
+            40% { transform: scale(1.2) rotate(15deg); filter: brightness(2); }
+            100% { transform: scale(0) rotate(-20deg); opacity: 0; filter: brightness(0); }
+        }
+
+        /* TCG Card flip animation */
+        .tcg-card-container { perspective: 1000px; width: 140px; height: 196px; margin: 0 10px; cursor: pointer; }
+        .tcg-card-inner { width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; position: relative; }
+        .tcg-card-container.flipped .tcg-card-inner { transform: rotateY(180deg); }
+        .tcg-card-cover, .tcg-card-reveal { width: 100%; height: 100%; position: absolute; backface-visibility: hidden; border-radius: 12px; box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+        .tcg-card-cover { background: repeating-linear-gradient(45deg, #2563eb, #2563eb 10px, #1e40af 10px, #1e40af 20px); border: 8px solid #fcd34d; display: flex; align-items: center; justify-content: center; }
+        .tcg-card-cover::after { content: '⭐'; font-size: 40px; }
+        .tcg-card-reveal { background: white; transform: rotateY(180deg); display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid; padding: 10px; }
+
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type="number"] { -moz-appearance: textfield; }
+
+        .pokemon-card {
+            background: white;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .pokemon-card:hover { transform: translateY(-5px); }
+        
+        .rarity-common { border-bottom: 4px solid #9ca3af; }
+        .rarity-rare { border-bottom: 4px solid #3b82f6; background: #eff6ff; }
+        .rarity-legendary { border-bottom: 4px solid #eab308; background: #fefce8; box-shadow: 0 0 15px rgba(234,179,8,0.3); }
+
+        .match-item {
+            background: white;
+            border: 3px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 15px 20px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            z-index: 10;
+        }
+        .match-item:hover { border-color: #93c5fd; transform: scale(1.05); }
+        .match-item.selected { border-color: #3b82f6; background: #eff6ff; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        .match-item.solved {
+            border-color: #22c55e; background: #f0fdf4; color: #15803d;
+            cursor: default; pointer-events: none; opacity: 0.8;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="w-full max-w-2xl mx-auto">
+        <header class="flex flex-wrap justify-between items-center mb-6 glass-panel p-4 gap-4">
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-bold text-blue-600">חידון הכפל והפוקימונים</h1>
+                <div id="timer-display" class="hidden text-base font-bold bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full shadow-inner flex items-center gap-1">
+                    ⏱️ <span id="time-text">00:00</span>
+                </div>
+            </div>
+            <div class="text-lg font-bold bg-blue-100 text-blue-800 px-4 py-2 rounded-full shadow-inner flex flex-col items-center">
+                <span>⭐ <span id="score-display">0</span></span>
+                <span class="text-xs text-blue-600">נקודות</span>
+            </div>
+        </header>
+
+        <div id="cloud-sync-indicator" class="text-center text-xs text-gray-500 mb-2 font-medium transition-opacity opacity-0">
+            ☁️ מתסנכרן מול הענן...
+        </div>
+
+        <main id="app-container" class="glass-panel p-6 md:p-10 mb-8 min-h-[400px] flex flex-col justify-center items-center relative overflow-hidden">
+            <div class="animate-pulse text-xl text-blue-500 font-bold">טוען משחק ושומר נתונים...</div>
+        </main>
+
+        <section class="glass-panel p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-700">הפוקימונים שלי (<span id="pokemon-count">0</span>)</h2>
+                <button onclick="window.openShop(true)" class="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 text-sm font-bold py-1 px-3 rounded-full shadow-sm">🛒 חנות חבילות</button>
+            </div>
+            <p id="pokedex-empty" class="text-center text-gray-500 text-sm mb-2">פתור עוד תרגילים כדי לתפוס פוקימונים!</p>
+            <div id="pokedex" class="grid grid-cols-3 md:grid-cols-4 gap-4">
+                <!-- Pokedex entries -->
+            </div>
+        </section>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokemon-math-v2';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth, userId;
+        
+        let state = {
+            score: 0,
+            pokemons: [],
+            mistakes: {}, // Format: { "a_b": required_correct_count }
+            setsCompleted: 0,
+            correctSinceLastPokemon: 0,
+            
+            // Session logic
+            currentSet: [],
+            individualQuestions: [],
+            matchQuestions: [],
+            phase: 'study', // 'study', 'individual', 'match', 'reward', 'shop'
+            currentIndex: 0,
+            matchState: { selectedEq: null, selectedAns: null, completedPairs: [] },
+            startTime: null,
+            timerInterval: null,
+            elapsedSeconds: 0
+        };
+
+        const rarityLists = {
+            common: [1,4,7,10,13,16,19,21,23,25,27,29,32,37,39,41,43,46,50,52,54,58,60,69,74,92,133], // Basic forms
+            rare: [2,3,5,6,8,9,31,34,38,45,65,68,89,94,130,131,143,149], // Evolved/Strong
+            legendary: [144,145,146,150,151,243,244,245,249,250,251,382,383,384] // Legends
+        };
+
+        const container = document.getElementById('app-container');
+        const scoreDisplay = document.getElementById('score-display');
+        const pokedex = document.getElementById('pokedex');
+        const pokedexEmpty = document.getElementById('pokedex-empty');
+        const pokemonCount = document.getElementById('pokemon-count');
+        const syncIndicator = document.getElementById('cloud-sync-indicator');
+
+        const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        async function loadUserData() {
+            let loadedData = null;
+            
+            // 1. קריאת נתונים מהשמירה המקומית (LocalStorage)
+            const localDataRaw = localStorage.getItem('pokemonMathSave');
+            if (localDataRaw) {
+                try { loadedData = JSON.parse(localDataRaw); } catch(e) {}
+            }
+            
+            // 2. סנכרון מול הענן אם קיים חיבור פעיל
+            if (db && userId) {
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'gameData', 'save');
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        loadedData = snap.data(); // הענן מקבל עדיפות ודורס את המקומי
+                    } else if (loadedData) {
+                        // אם יש לנו מידע מקומי (למשל ממשחק קודם) ואין ענן, נגבה את המידע לענן
+                        await setDoc(docRef, loadedData);
+                    }
+                } catch (e) { console.error("Error loading data from cloud", e); }
+            }
+
+            // 3. החלת המידע שנמצא
+            if (loadedData) {
+                state.score = loadedData.score || 0;
+                state.pokemons = loadedData.pokemons || [];
+                state.mistakes = loadedData.mistakes || {};
+                state.setsCompleted = loadedData.setsCompleted || 0;
+                state.correctSinceLastPokemon = loadedData.correctSinceLastPokemon || 0;
+            }
+            
+            updatePokedex();
+            scoreDisplay.innerText = state.score;
+        }
+
+        async function saveUserData() {
+            const dataToSave = {
+                score: state.score,
+                pokemons: state.pokemons,
+                mistakes: state.mistakes,
+                setsCompleted: state.setsCompleted,
+                correctSinceLastPokemon: state.correctSinceLastPokemon
+            };
+
+            // תמיד נשמור קודם כל ל-LocalStorage כגיבוי 
+            localStorage.setItem('pokemonMathSave', JSON.stringify(dataToSave));
+
+            // נשמור בנוסף לענן רק אם יש חיבור
+            if (db && userId) {
+                syncIndicator.style.opacity = '1';
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'gameData', 'save');
+                    await setDoc(docRef, dataToSave);
+                } catch (e) { console.error("Error saving data to cloud", e); }
+                setTimeout(() => { syncIndicator.style.opacity = '0'; }, 1000);
+            }
+        }
+
+        async function initApp() {
+            if (firebaseConfig) {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                    else await signInAnonymously(auth);
+                    
+                    userId = auth.currentUser.uid;
+                    await loadUserData();
+                } catch (e) { 
+                    console.error("Firebase init failed", e); 
+                    await loadUserData(); // במקרה של שגיאת התחברות - טען מידע מקומי
+                }
+            } else {
+                // אם פותחים את הקובץ ישירות ללא סביבת הענן
+                await loadUserData();
+            }
+            // Starts the game loop
+            generateNewSet();
+        }
+
+        function getMistakePair() {
+            const keys = Object.keys(state.mistakes);
+            if(keys.length === 0) return null;
+            // Get mistakes that still need correction
+            const validKeys = keys.filter(k => state.mistakes[k] > 0);
+            if(validKeys.length === 0) return null;
+            
+            // Clean up cleared mistakes
+            keys.forEach(k => { if(state.mistakes[k] <= 0) delete state.mistakes[k]; });
+            saveUserData();
+
+            if(validKeys.length === 0) return null;
+            const chosen = validKeys[randomInt(0, validKeys.length - 1)];
+            const [a, b] = chosen.split('_').map(Number);
+            return { a, b };
+        }
+
+        window.generateNewSet = function() {
+            let mults = [];
+            let usedAnswers = new Set();
+            let usedPairs = new Set(); // Prevent reversed duplicates like 6x7 and 7x6
+
+            // 1. Inject up to 2 mistakes for spaced repetition
+            let mistakeCount = 0;
+            for(let i=0; i<2; i++) {
+                const mistake = getMistakePair();
+                if(mistake) {
+                    const ans = mistake.a * mistake.b;
+                    const key1 = `${mistake.a}_${mistake.b}`;
+                    const key2 = `${mistake.b}_${mistake.a}`;
+                    
+                    if(!usedPairs.has(key1)) {
+                        usedPairs.add(key1); usedPairs.add(key2); usedAnswers.add(ans);
+                        mults.push({ 
+                            id: 'm'+mults.length, isDiv: false, 
+                            a: mistake.a, b: mistake.b, ans, 
+                            displayEq: `<span>${mistake.a}</span> <span class="text-blue-500">×</span> <span>${mistake.b}</span> <span class="text-gray-400">=</span>`, 
+                            correct: ans, corePair: key1
+                        });
+                        mistakeCount++;
+                    }
+                }
+            }
+
+            // 2. Fill the rest of the 5 questions randomly
+            while (mults.length < 5) {
+                const a = randomInt(2, 10);
+                const b = randomInt(2, 10);
+                const ans = a * b;
+                const key1 = `${a}_${b}`;
+                const key2 = `${b}_${a}`;
+                
+                if (!usedAnswers.has(ans) && !usedPairs.has(key1)) {
+                    usedAnswers.add(ans); usedPairs.add(key1); usedPairs.add(key2);
+                    mults.push({ 
+                        id: 'm'+mults.length, isDiv: false, a, b, ans, 
+                        displayEq: `<span>${a}</span> <span class="text-blue-500">×</span> <span>${b}</span> <span class="text-gray-400">=</span>`, 
+                        correct: ans, corePair: key1
+                    });
+                }
+            }
+            
+            // 3. Generate 3 division questions from the multiplication set
+            let divs = [...mults].sort(() => 0.5 - Math.random()).slice(0, 3);
+            divs = divs.map((q, i) => ({
+                id: 'd'+i, isDiv: true, a: q.a, b: q.b, ans: q.ans, 
+                displayEq: `<span>${q.ans}</span> <span class="text-blue-500">÷</span> <span>${q.a}</span> <span class="text-gray-400">=</span>`, 
+                correct: q.b, corePair: q.corePair
+            }));
+            
+            let allQ = [...mults, ...divs];
+            
+            // 4. Formatting: 4 Choice, 2 Input, 2 Match
+            let formats = ['choice', 'choice', 'choice', 'choice', 'open', 'open', 'match', 'match'];
+            formats.sort(() => 0.5 - Math.random());
+            
+            state.individualQuestions = [];
+            state.matchQuestions = [];
+            
+            allQ.forEach((q, i) => {
+                q.format = formats[i];
+                if (q.format === 'match') state.matchQuestions.push(q);
+                else state.individualQuestions.push(q);
+            });
+            
+            state.currentSet = mults;
+            state.phase = 'study';
+            state.currentIndex = 0;
+            render();
+        };
+
+        function handleQuestionResult(corePair, isCorrect) {
+            // Sort pair to ensure consistency (e.g. 6x7 and 7x6 is same mistake)
+            const parts = corePair.split('_').map(Number).sort((a,b)=>a-b);
+            const key = `${parts[0]}_${parts[1]}`;
+
+            if (isCorrect) {
+                if (state.mistakes[key]) {
+                    state.mistakes[key]--;
+                    if (state.mistakes[key] <= 0) delete state.mistakes[key];
+                }
+            } else {
+                // If wrong, needs 3 correct answers to clear from repetition pool (max 5)
+                state.mistakes[key] = Math.min((state.mistakes[key] || 0) + 3, 5);
+            }
+            saveUserData();
+        }
+
+        function render() {
+            container.innerHTML = '';
+            if (state.phase === 'study') renderStudyPhase();
+            else if (state.phase === 'individual') {
+                const q = state.individualQuestions[state.currentIndex];
+                if (q.format === 'choice') renderChoiceQuestion(q, state.currentIndex, state.individualQuestions.length);
+                else renderInputQuestion(q, state.currentIndex, state.individualQuestions.length);
+            } 
+            else if (state.phase === 'match') renderMatchGame();
+            else if (state.phase === 'shop') renderShop();
+        }
+
+        function renderStudyPhase() {
+            const wrap = document.createElement('div');
+            wrap.className = 'w-full text-center bounce-in';
+            
+            let html = `
+                <h2 class="text-2xl font-bold text-blue-600 mb-2">שלב זכרון</h2>
+                <p class="text-gray-600 mb-6">הסתכל היטב על התרגילים הבאים, תכף מתחיל החידון עליהם!</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-xl font-medium text-gray-800 text-center mx-auto max-w-md">
+            `;
+            
+            state.currentSet.forEach((item, index) => {
+                const isLastAndOdd = (index === state.currentSet.length - 1) && (state.currentSet.length % 2 !== 0);
+                const colSpan = isLastAndOdd ? 'md:col-span-2' : '';
+                html += `<div class="bg-blue-50 py-3 px-4 rounded-xl border border-blue-100 ${colSpan}" dir="ltr">${item.a} × ${item.b} = <span class="text-blue-700 font-bold">${item.ans}</span></div>`;
+            });
+            
+            html += `</div>
+                <button onclick="window.startQuestions()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg w-full max-w-xs">
+                    אני מוכן! התחל
+                </button>
+            `;
+            
+            wrap.innerHTML = html;
+            container.appendChild(wrap);
+        }
+
+        window.startQuestions = function() {
+            state.phase = 'individual';
+            state.currentIndex = 0;
+            state.elapsedSeconds = 0;
+            document.getElementById('timer-display').classList.remove('hidden');
+            updateTimerDisplay();
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.elapsedSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+            render();
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(state.elapsedSeconds / 60).toString().padStart(2, '0');
+            const secs = (state.elapsedSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('time-text').innerText = `${mins}:${secs}`;
+        }
+
+        function renderInputQuestion(q, index, total) {
+            const wrap = document.createElement('div');
+            wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+            wrap.id = 'question-wrap';
+            
+            wrap.innerHTML = `
+                <div class="text-sm text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full">שאלה ${index + 1} מתוך ${total} (הקלדה)</div>
+                <div class="text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 mb-8 w-full" dir="ltr">
+                    ${q.displayEq}
+                    <input type="number" inputmode="numeric" id="answer-input" class="w-24 h-16 text-center border-4 border-blue-300 rounded-xl focus:border-blue-500 focus:outline-none shadow-inner text-4xl">
+                </div>
+                <div id="feedback-msg" class="h-8 text-lg font-bold mb-4 w-full"></div>
+                <button onclick="window.checkInputAnswer('${q.correct}', '${q.corePair}')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg w-full max-w-xs">בדוק תשובה</button>
+            `;
+            container.appendChild(wrap);
+            
+            const input = document.getElementById('answer-input');
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') window.checkInputAnswer(q.correct, q.corePair);
+            });
+            setTimeout(() => input.focus(), 50);
+        }
+
+        window.checkInputAnswer = function(correctAnswerStr, corePair) {
+            const correctAnswer = parseInt(correctAnswerStr);
+            const feedback = document.getElementById('feedback-msg');
+            const input = document.getElementById('answer-input');
+            const wrap = document.getElementById('question-wrap');
+            const userValue = parseInt(input.value);
+
+            if (isNaN(userValue)) {
+                feedback.innerHTML = '<span class="text-gray-500">הכנס מספר בבקשה</span>';
+                return;
+            }
+
+            if (userValue === correctAnswer) {
+                handleQuestionResult(corePair, true);
+                feedback.innerHTML = '<span class="text-green-500">כל הכבוד! אלוף! 👏</span>';
+                input.className = 'w-24 h-16 text-center border-4 border-green-500 bg-green-50 rounded-xl text-4xl text-green-700';
+                input.disabled = true;
+                handleCorrectAnswer();
+            } else {
+                handleQuestionResult(corePair, false);
+                feedback.innerHTML = '<span class="text-red-500">אופס, טעות. נסה שוב!</span>';
+                input.value = '';
+                input.className = 'w-24 h-16 text-center border-4 border-red-400 bg-red-50 rounded-xl text-4xl text-red-600 focus:outline-none';
+                wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
+                input.focus();
+            }
+        }
+
+        function generateDistractors(q) {
+            let options = new Set();
+            options.add(q.correct);
+            if (q.isDiv) {
+                const mistakes = [q.correct + 1, q.correct - 1, q.a, q.ans, q.correct + 2, q.correct - 2];
+                mistakes.forEach(m => { if (m > 0 && !options.has(m) && options.size < 10) options.add(m); });
+            } else {
+                const mistakes = [ q.correct + q.a, q.correct - q.a, q.correct + q.b, q.correct - q.b, (q.a+1) * q.b, q.a * (q.b+1), q.correct + 10, q.correct - 10, parseInt(`${q.correct}`.split('').reverse().join(''))];
+                mistakes.forEach(m => { if (m > 0 && !options.has(m) && options.size < 10 && !isNaN(m)) options.add(m); });
+            }
+            while (options.size < 10) {
+                let r = q.correct + randomInt(-15, 15);
+                if (r > 0 && !options.has(r)) options.add(r);
+            }
+            return Array.from(options).slice(0, 10).sort(() => 0.5 - Math.random());
+        }
+
+        function renderChoiceQuestion(q, index, total) {
+            const wrap = document.createElement('div');
+            wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+            wrap.id = 'question-wrap';
+            
+            wrap.innerHTML = `
+                <div class="text-sm text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full">שאלה ${index + 1} מתוך ${total} (בחירה)</div>
+                <div class="text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 mb-6 w-full" dir="ltr">${q.displayEq} <span class="text-blue-600">?</span></div>
+            `;
+            
+            const optionsGrid = document.createElement('div');
+            optionsGrid.className = 'grid grid-cols-5 gap-3 mb-6 w-full max-w-md mx-auto';
+            
+            const options = generateDistractors(q);
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'bg-white border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 text-xl font-bold py-3 rounded-xl shadow-sm transition transform active:scale-95';
+                btn.innerText = opt;
+                btn.onclick = () => window.checkChoiceAnswer(opt, q.correct, btn, optionsGrid, q.corePair);
+                optionsGrid.appendChild(btn);
+            });
+            
+            wrap.appendChild(optionsGrid);
+            wrap.insertAdjacentHTML('beforeend', '<div id="feedback-msg" class="h-8 text-lg font-bold w-full"></div>');
+            container.appendChild(wrap);
+        }
+
+        window.checkChoiceAnswer = function(selected, correct, btn, grid, corePair) {
+            const feedback = document.getElementById('feedback-msg');
+            if (selected === correct) {
+                handleQuestionResult(corePair, true);
+                btn.className = 'bg-green-500 border-2 border-green-600 text-white text-xl font-bold py-3 rounded-xl shadow-md transition transform scale-105';
+                feedback.innerHTML = '<span class="text-green-500">כל הכבוד! אלוף! 👏</span>';
+                Array.from(grid.children).forEach(b => b.disabled = true);
+                handleCorrectAnswer();
+            } else {
+                handleQuestionResult(corePair, false);
+                btn.className = 'bg-red-100 border-2 border-red-300 text-red-500 text-xl font-bold py-3 rounded-xl shadow-sm transition transform opacity-50';
+                btn.disabled = true;
+                feedback.innerHTML = '<span class="text-red-500">אופס, טעות. נסה אפשרות אחרת!</span>';
+                const wrap = document.getElementById('question-wrap');
+                wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
+            }
+        }
+
+        function renderMatchGame() {
+            state.matchState = { selectedEq: null, selectedAns: null, completedPairs: [] };
+            
+            const wrap = document.createElement('div');
+            wrap.className = 'w-full text-center bounce-in flex flex-col items-center relative';
+            wrap.style.minHeight = '300px';
+            
+            wrap.innerHTML = `
+                <div class="text-sm text-gray-500 mb-6 bg-gray-100 px-3 py-1 rounded-full relative z-20">שלב בונוס - מתיחת קווים</div>
+                <h3 class="text-xl font-bold mb-4 relative z-20 text-blue-700">לחץ על תרגיל ואז על התשובה שלו כדי למתוח קו!</h3>
+            `;
+
+            const gameArea = document.createElement('div');
+            gameArea.className = 'relative w-full flex justify-between px-4 md:px-16 mt-4';
+            gameArea.id = 'match-area';
+
+            const eqsDiv = document.createElement('div'); eqsDiv.className = 'flex flex-col gap-6 z-10 w-32';
+            const ansDiv = document.createElement('div'); ansDiv.className = 'flex flex-col gap-6 z-10 w-32';
+
+            const shuffledEqs = [...state.matchQuestions].sort(() => 0.5 - Math.random());
+            let answersData = state.matchQuestions.map(q => ({ id: 'ans_'+q.id, val: q.correct, originalQ: q }));
+            
+            if (state.matchQuestions.length <= 2) {
+                let fakeVal = state.matchQuestions[0].correct + randomInt(1, 3);
+                if (state.matchQuestions[1] && fakeVal === state.matchQuestions[1].correct) fakeVal += 2;
+                answersData.push({ id: 'ans_fake', val: fakeVal, originalQ: null });
+            }
+            answersData.sort(() => 0.5 - Math.random());
+
+            shuffledEqs.forEach((q) => {
+                const eqBtn = document.createElement('div');
+                eqBtn.className = 'match-item text-center'; eqBtn.dir = 'ltr';
+                eqBtn.innerText = q.isDiv ? `${q.ans} ÷ ${q.a}` : `${q.a} × ${q.b}`;
+                eqBtn.dataset.val = q.correct; eqBtn.dataset.type = 'eq'; eqBtn.dataset.core = q.corePair;
+                eqBtn.id = `eq-${q.id}`;
+                eqBtn.onclick = () => window.handleMatchClick(eqBtn);
+                eqsDiv.appendChild(eqBtn);
+            });
+
+            answersData.forEach((ans) => {
+                const ansBtn = document.createElement('div');
+                ansBtn.className = 'match-item text-center';
+                ansBtn.innerText = ans.val;
+                ansBtn.dataset.val = ans.val; ansBtn.dataset.type = 'ans';
+                ansBtn.id = ans.id;
+                ansBtn.onclick = () => window.handleMatchClick(ansBtn);
+                ansDiv.appendChild(ansBtn);
+            });
+
+            gameArea.appendChild(eqsDiv);
+            gameArea.appendChild(ansDiv);
+            gameArea.insertAdjacentHTML('beforeend', `<canvas id="match-canvas" class="absolute inset-0 z-0 pointer-events-none w-full h-full"></canvas>`);
+            
+            wrap.appendChild(gameArea);
+            wrap.insertAdjacentHTML('beforeend', '<div id="match-feedback" class="h-8 text-lg font-bold mt-6 z-20"></div>');
+            container.appendChild(wrap);
+            
+            setTimeout(resizeCanvas, 100);
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        function resizeCanvas() {
+            const area = document.getElementById('match-area');
+            const canvas = document.getElementById('match-canvas');
+            if (area && canvas) {
+                canvas.width = area.offsetWidth;
+                canvas.height = area.offsetHeight;
+                drawLines();
+            }
+        }
+
+        window.handleMatchClick = function(element) {
+            if (element.classList.contains('solved')) return;
+            const type = element.dataset.type;
+            const stateRef = state.matchState;
+            
+            if (element.classList.contains('selected')) {
+                element.classList.remove('selected');
+                if (type === 'eq') stateRef.selectedEq = null; else stateRef.selectedAns = null;
+                return;
+            }
+
+            Array.from(element.parentElement.children).forEach(child => {
+                if (!child.classList.contains('solved')) child.classList.remove('selected');
+            });
+            
+            element.classList.add('selected');
+            if (type === 'eq') stateRef.selectedEq = element; else stateRef.selectedAns = element;
+
+            if (stateRef.selectedEq && stateRef.selectedAns) window.checkMatch();
+        }
+
+        window.checkMatch = function() {
+            const eq = state.matchState.selectedEq;
+            const ans = state.matchState.selectedAns;
+            const feedback = document.getElementById('match-feedback');
+            const corePair = eq.dataset.core;
+
+            if (eq.dataset.val === ans.dataset.val) {
+                handleQuestionResult(corePair, true);
+                eq.classList.remove('selected'); ans.classList.remove('selected');
+                eq.classList.add('solved'); ans.classList.add('solved');
+                
+                state.matchState.completedPairs.push({ eq: eq.id, ans: ans.id });
+                drawLines();
+                feedback.innerHTML = '<span class="text-green-500">נכון מאוד!</span>';
+                
+                state.matchState.selectedEq = null; state.matchState.selectedAns = null;
+
+                if (state.matchState.completedPairs.length === state.matchQuestions.length) {
+                    feedback.innerHTML = '<span class="text-green-500">סיימת את כולם, אלוף! 👏</span>';
+                    window.removeEventListener('resize', resizeCanvas);
+                    setTimeout(() => {
+                        state.score += state.matchQuestions.length;
+                        state.correctSinceLastPokemon += state.matchQuestions.length;
+                        scoreDisplay.innerText = state.score;
+                        saveUserData();
+                        checkRewardOrAdvance(true);
+                    }, 1500);
+                }
+            } else {
+                handleQuestionResult(corePair, false); // Log mistake
+                feedback.innerHTML = '<span class="text-red-500">נסה שוב! תמתח קו אחר.</span>';
+                eq.classList.remove('selected'); ans.classList.remove('selected');
+                eq.classList.add('animate-pulse'); ans.classList.add('animate-pulse');
+                setTimeout(() => { eq.classList.remove('animate-pulse'); ans.classList.remove('animate-pulse'); }, 500);
+                state.matchState.selectedEq = null; state.matchState.selectedAns = null;
+            }
+        }
+
+        function drawLines() {
+            const canvas = document.getElementById('match-canvas');
+            const area = document.getElementById('match-area');
+            if (!canvas || !area) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const areaRect = area.getBoundingClientRect();
+
+            state.matchState.completedPairs.forEach(pair => {
+                const el1 = document.getElementById(pair.eq); const el2 = document.getElementById(pair.ans);
+                if (el1 && el2) {
+                    const rect1 = el1.getBoundingClientRect(); const rect2 = el2.getBoundingClientRect();
+                    const x1 = rect1.left - areaRect.left; const y1 = (rect1.top - areaRect.top) + (rect1.height / 2);
+                    const x2 = rect2.right - areaRect.left; const y2 = (rect2.top - areaRect.top) + (rect2.height / 2);
+                    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+                    ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 4; ctx.stroke();
+                }
+            });
+        }
+
+        function handleCorrectAnswer() {
+            state.score++;
+            state.correctSinceLastPokemon++;
+            scoreDisplay.innerText = state.score;
+            saveUserData();
+            setTimeout(() => { checkRewardOrAdvance(false); }, 1000);
+        }
+
+        function checkRewardOrAdvance(fromMatchGame) {
+            const isRewardTime = (state.correctSinceLastPokemon >= 16);
+            if (isRewardTime) {
+                state.correctSinceLastPokemon = 0;
+                saveUserData();
+                fetchAndShowPokemonReward();
+            } else {
+                if (fromMatchGame) showSetComplete(); else advanceToNextQuestion();
+            }
+        }
+
+        function advanceToNextQuestion(returningFromReward = false) {
+            if (!returningFromReward && state.phase === 'individual') state.currentIndex++;
+
+            if (state.phase === 'individual') {
+                if (state.currentIndex >= state.individualQuestions.length) {
+                    if (state.matchQuestions.length > 0) { state.phase = 'match'; render(); }
+                    else showSetComplete();
+                } else { render(); }
+            } else if (state.phase === 'match' && returningFromReward) {
+                showSetComplete();
+            }
+        }
+
+        function showSetComplete() {
+            if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+            document.getElementById('timer-display').classList.add('hidden');
+            
+            state.setsCompleted++;
+            saveUserData();
+            
+            let timeText = `${state.elapsedSeconds} שניות`;
+            if (state.elapsedSeconds >= 60) {
+                const m = Math.floor(state.elapsedSeconds/60); const s = state.elapsedSeconds%60;
+                timeText = `${m} דקות ו-${s} שניות`;
+            }
+            
+            let bonusHtml = '';
+            // Speed bonus for < 60s
+            if (state.elapsedSeconds > 0 && state.elapsedSeconds <= 60) {
+                const bonus = 10;
+                state.score += bonus;
+                scoreDisplay.innerText = state.score;
+                saveUserData();
+                bonusHtml = `<div class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg inline-block mb-4 font-bold border border-yellow-300">⚡ בונוס מהירות! +${bonus} נקודות</div>`;
+            }
+
+            container.innerHTML = `
+                <div class="text-center bounce-in">
+                    <h2 class="text-3xl font-bold text-green-500 mb-4">סיימת את הסט בהצלחה! 🎉</h2>
+                    <p class="text-lg text-gray-700 mb-2">זמן ביצוע: <b>${timeText}</b></p>
+                    ${bonusHtml}
+                    <div id="next-action-area" class="mt-8 flex flex-col gap-3 items-center">
+                        ${state.setsCompleted % 3 === 0 
+                            ? `<button onclick="window.openShop()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-xl">🛒 חנות פוקימונים פתוחה!</button>`
+                            : `<button onclick="window.generateNewSet()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-xl">התחל סט חדש!</button>`
+                        }
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openShop = function(fromMenu = false) {
+            state.phase = 'shop';
+            renderShop(fromMenu);
+        }
+
+        function renderShop(fromMenu = false) {
+            container.innerHTML = `
+                <div class="text-center bounce-in w-full">
+                    <h2 class="text-3xl font-bold text-purple-600 mb-2">חנות חבילות פוקימונים</h2>
+                    <p class="text-gray-600 mb-6">יש לך כרגע <b>${state.score}</b> נקודות</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <!-- Basic Pack -->
+                        <div class="bg-white border-2 border-gray-200 rounded-xl p-4 flex flex-col items-center shadow hover:shadow-md transition">
+                            <div class="text-4xl mb-2">🎒</div>
+                            <h3 class="font-bold text-lg">חבילה רגילה</h3>
+                            <p class="text-sm text-gray-500 mb-4">3 פוקימונים רגילים</p>
+                            <button onclick="window.buyPack(15, 'basic')" class="${state.score >= 15 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-2 px-6 rounded-full w-full">15 נק'</button>
+                        </div>
+                        <!-- Super Pack -->
+                        <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex flex-col items-center shadow hover:shadow-md transition">
+                            <div class="text-4xl mb-2">💼</div>
+                            <h3 class="font-bold text-lg text-blue-700">חבילה נדירה</h3>
+                            <p class="text-sm text-blue-600 mb-4">2 רגילים, 1 נדיר!</p>
+                            <button onclick="window.buyPack(30, 'super')" class="${state.score >= 30 ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-2 px-6 rounded-full w-full">30 נק'</button>
+                        </div>
+                        <!-- Ultra Pack -->
+                        <div class="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 flex flex-col items-center shadow-lg transform hover:scale-105 transition relative">
+                            <div class="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">לוהט!</div>
+                            <div class="text-4xl mb-2">🎁</div>
+                            <h3 class="font-bold text-lg text-yellow-700">חבילת אגדות</h3>
+                            <p class="text-sm text-yellow-700 mb-4">1 רגיל, 1 נדיר, 1 אגדי!</p>
+                            <button onclick="window.buyPack(50, 'ultra')" class="${state.score >= 50 ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-2 px-6 rounded-full w-full">50 נק'</button>
+                        </div>
+                    </div>
+                    
+                    ${fromMenu ? `<button onclick="window.generateNewSet()" class="text-gray-500 hover:text-gray-800 font-medium underline">חזור למשחק</button>` 
+                               : `<button onclick="window.generateNewSet()" class="text-gray-500 hover:text-gray-800 font-medium underline">דלג הפעם והמשך לסט הבא</button>`}
+                </div>
+            `;
+        }
+
+        window.buyPack = async function(cost, type) {
+            if(state.score < cost) return;
+            state.score -= cost;
+            scoreDisplay.innerText = state.score;
+            saveUserData();
+
+            let idsToFetch = [];
+            if(type === 'basic') {
+                idsToFetch = [getRandomId('common'), getRandomId('common'), getRandomId('common')];
+            } else if(type === 'super') {
+                idsToFetch = [getRandomId('common'), getRandomId('common'), getRandomId('rare')];
+            } else if(type === 'ultra') {
+                idsToFetch = [getRandomId('common'), getRandomId('rare'), getRandomId('legendary')];
+            }
+
+            // Show interactive unpack with correct pack design
+            revealPokemonInteractive(idsToFetch, 'pack', type);
+        }
+
+        function getRandomId(rarityStr) {
+            const arr = rarityLists[rarityStr];
+            return arr[randomInt(0, arr.length - 1)];
+        }
+
+        async function fetchPokemonData(id) {
+            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+            const data = await res.json();
+            const rarity = rarityLists.legendary.includes(id) ? 'legendary' : (rarityLists.rare.includes(id) ? 'rare' : 'common');
+            return {
+                id: data.id,
+                name: data.name.charAt(0).toUpperCase() + data.name.slice(1),
+                imgUrl: data.sprites.other['official-artwork'].front_default || data.sprites.front_default,
+                rarity: rarity
+            };
+        }
+
+        function fetchAndShowPokemonReward() {
+            // Normal reward is usually common/rare
+            const isRare = Math.random() > 0.8; 
+            const id = getRandomId(isRare ? 'rare' : 'common');
+            revealPokemonInteractive([id], 'reward');
+        }
+
+        function revealPokemonInteractive(idsToFetch, context, packType = 'basic') {
+            const previousPhase = state.phase;
+            state.phase = 'reward';
+            
+            let clicksNeeded = context === 'pack' ? 5 : 3;
+            let currentClicks = 0;
+            
+            let interactiveElementHtml = '';
+            if (context === 'pack') {
+                const packNames = { 'basic': 'רגילה', 'super': 'נדירה', 'ultra': 'אגדות' };
+                interactiveElementHtml = `
+                    <div id="interactive-item" class="booster-pack pack-${packType} my-4">
+                        <div class="pack-title">חבילה<br>${packNames[packType]}</div>
+                    </div>
+                `;
+            } else {
+                interactiveElementHtml = `
+                    <div id="interactive-item" class="cursor-pointer transition transform hover:scale-110 my-4" style="width: 150px; height: 150px;">
+                        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" class="w-full h-full object-contain drop-shadow-xl" alt="Pokeball">
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="text-center bounce-in flex flex-col items-center justify-center min-h-[300px]">
+                    <h2 class="text-2xl font-bold text-gray-700 mb-2">
+                        ${context === 'pack' ? 'קנית חבילה! לחץ עליה כדי לפתוח' : 'מצאת פוקימון! לחץ כדי לתפוס אותו'}
+                    </h2>
+                    ${interactiveElementHtml}
+                    <div class="mt-4 w-48 h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                        <div id="click-progress" class="h-full ${context === 'pack' ? 'bg-purple-500' : 'bg-red-500'} transition-all duration-300" style="width: 0%;"></div>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-2 font-medium">לחץ עוד <span id="clicks-left">${clicksNeeded}</span> פעמים!</p>
+                </div>
+            `;
+
+            const item = document.getElementById('interactive-item');
+            const bar = document.getElementById('click-progress');
+            const clicksLeftSpan = document.getElementById('clicks-left');
+
+            item.onclick = () => {
+                currentClicks++;
+                item.classList.remove('shake-hard'); void item.offsetWidth; item.classList.add('shake-hard');
+                bar.style.width = `${(currentClicks / clicksNeeded) * 100}%`;
+                clicksLeftSpan.innerText = Math.max(0, clicksNeeded - currentClicks);
+
+                if(currentClicks >= clicksNeeded) {
+                    item.onclick = null;
+                    if (context === 'pack') {
+                        item.classList.remove('shake-hard');
+                        item.classList.add('rip-open'); // Rip open animation!
+                        setTimeout(() => showLoadingAndFetch(idsToFetch, context, previousPhase), 800);
+                    } else {
+                        showLoadingAndFetch(idsToFetch, context, previousPhase);
+                    }
+                }
+            };
+        }
+
+        async function showLoadingAndFetch(idsToFetch, context, previousPhase) {
+            container.innerHTML = `
+                <div class="text-center flex flex-col items-center justify-center min-h-[300px] bounce-in">
+                    <div class="animate-spin rounded-full h-16 w-16 border-b-4 ${context === 'pack' ? 'border-purple-500' : 'border-red-500'} mb-4"></div>
+                    <h2 class="text-2xl font-bold text-gray-600">${context === 'pack' ? 'שולף קלפים...' : 'תופס...'}</h2>
+                </div>
+            `;
+            
+            try {
+                // BUG FIX: Promise.allSettled ensures one failed download doesn't ruin the whole pack!
+                const pokemonsResults = await Promise.allSettled(idsToFetch.map(id => fetchPokemonData(id)));
+                const pokemons = pokemonsResults.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+                
+                if (pokemons.length === 0) throw new Error("All fetches failed");
+
+                pokemons.forEach(p => state.pokemons.push(p));
+                saveUserData();
+                updatePokedex();
+
+                // Display revealed pokemons with Card Flip animation
+                let gridHtml = `<div class="flex flex-wrap justify-center gap-6 mb-8 mt-6">`;
+                
+                pokemons.forEach((p, index) => {
+                    const borderColor = p.rarity === 'legendary' ? '#eab308' : (p.rarity === 'rare' ? '#3b82f6' : '#9ca3af');
+                    const bgClass = p.rarity === 'legendary' ? 'bg-yellow-50' : (p.rarity === 'rare' ? 'bg-blue-50' : 'bg-white');
+                    const title = p.rarity === 'legendary' ? '⭐ אגדי!' : (p.rarity === 'rare' ? '🌟 נדיר!' : '');
+                    
+                    if (context === 'pack') {
+                        // TCG Card style for packs
+                        gridHtml += `
+                            <div class="tcg-card-container bounce-in" style="animation-delay: ${index * 0.2}s" onclick="this.classList.toggle('flipped')">
+                                <div class="tcg-card-inner">
+                                    <div class="tcg-card-cover"></div>
+                                    <div class="tcg-card-reveal ${bgClass}" style="border-color: ${borderColor}">
+                                        ${title ? `<span class="text-xs font-bold mb-1">${title}</span>` : '<span class="text-xs font-bold mb-1 opacity-0">.</span>'}
+                                        <img src="${p.imgUrl}" class="w-20 h-20 object-contain drop-shadow-md mb-2">
+                                        <span class="font-bold text-gray-800 text-sm text-center">${p.name}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // Regular showcase for single reward
+                        gridHtml += `
+                            <div class="bounce-in flex flex-col items-center p-4 rounded-xl border-4 ${bgClass} shadow-lg" style="width: 160px; border-color: ${borderColor}">
+                                ${title ? `<span class="text-xs font-bold mb-2">${title}</span>` : ''}
+                                <img src="${p.imgUrl}" class="w-24 h-24 object-contain drop-shadow-md mb-2">
+                                <span class="font-bold text-gray-800">${p.name}</span>
+                            </div>
+                        `;
+                    }
+                });
+                gridHtml += `</div>`;
+
+                container.innerHTML = `
+                    <div class="text-center bounce-in flex flex-col items-center">
+                        <h2 class="text-3xl font-bold ${context === 'pack' ? 'text-purple-600' : 'text-green-600'} mb-2">
+                            ${context === 'pack' ? 'וואו! איזה קלפים!' : 'תתחדש! התווסף לאוסף.'}
+                        </h2>
+                        ${context === 'pack' ? '<p class="text-gray-500 mb-4 animate-pulse">לחץ על הקלפים כדי להפוך אותם</p>' : ''}
+                        
+                        ${gridHtml}
+                        
+                        <button id="reward-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg mt-4">
+                            מעולה! המשך
+                        </button>
+                    </div>
+                `;
+
+                // Auto-flip cards in pack after a short delay
+                if (context === 'pack') {
+                    setTimeout(() => {
+                        const cards = document.querySelectorAll('.tcg-card-container');
+                        cards.forEach((card, i) => {
+                            setTimeout(() => card.classList.add('flipped'), 600 + (i * 300));
+                        });
+                    }, 100);
+                }
+
+                document.getElementById('reward-btn').onclick = () => {
+                    if (context === 'pack') {
+                        window.generateNewSet();
+                    } else {
+                        state.phase = previousPhase;
+                        advanceToNextQuestion(true);
+                    }
+                };
+            } catch (error) {
+                console.error("Error fetching pokemons:", error);
+                // Fallback safe net
+                container.innerHTML = `<div class="text-center text-red-500 font-bold mb-4">הייתה בעיה קטנה באינטרנט. אל דאגה, הנקודות שלך נשמרו!</div>`;
+                setTimeout(() => {
+                    if (context === 'pack') window.generateNewSet();
+                    else { state.phase = previousPhase; advanceToNextQuestion(true); }
+                }, 3000);
+            }
+        }
+
+        function updatePokedex() {
+            pokemonCount.innerText = state.pokemons.length;
+            if (state.pokemons.length > 0) pokedexEmpty.style.display = 'none';
+            
+            pokedex.innerHTML = '';
+            // Render backwards to show newest first
+            [...state.pokemons].reverse().forEach((pokemon, i) => {
+                const div = document.createElement('div');
+                const rarityClass = `rarity-${pokemon.rarity || 'common'}`;
+                div.className = `pokemon-card bounce-in text-center ${rarityClass}`;
+                div.style.animationDelay = `${(i%10) * 0.05}s`;
+                div.innerHTML = `
+                    <img src="${pokemon.imgUrl}" alt="${pokemon.name}" class="w-20 h-20 object-contain mx-auto">
+                    <span class="block text-xs font-bold mt-2 text-gray-700 uppercase" style="font-size: 10px;">${pokemon.name}</span>
+                `;
+                pokedex.appendChild(div);
+            });
+        }
+
+        // Start app
+        window.onload = () => {
+            initApp();
+        };
+    </script>
+</body>
+</html>
