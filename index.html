@@ -53,7 +53,6 @@
             75% { transform: translateX(15px) rotate(10deg); }
         }
 
-        /* Added for Booster Pack Animation */
         .booster-pack {
             width: 160px; height: 240px;
             border-radius: 12px;
@@ -85,7 +84,6 @@
             100% { transform: scale(0) rotate(-20deg); opacity: 0; filter: brightness(0); }
         }
 
-        /* TCG Card flip animation */
         .tcg-card-container { perspective: 1000px; width: 140px; height: 196px; margin: 0 10px; cursor: pointer; }
         .tcg-card-inner { width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; position: relative; }
         .tcg-card-container.flipped .tcg-card-inner { transform: rotateY(180deg); }
@@ -144,7 +142,7 @@
     <div class="w-full max-w-2xl mx-auto">
         <header class="flex flex-wrap justify-between items-center mb-6 glass-panel p-4 gap-4">
             <div class="flex items-center gap-3">
-                <h1 class="text-2xl font-bold text-blue-600">חידון הכפל והפוקימונים</h1>
+                <h1 class="text-2xl font-bold text-blue-600">האתגר היומי</h1>
                 <div id="timer-display" class="hidden text-base font-bold bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full shadow-inner flex items-center gap-1">
                     ⏱️ <span id="time-text">00:00</span>
                 </div>
@@ -156,11 +154,11 @@
         </header>
 
         <div id="cloud-sync-indicator" class="text-center text-xs text-gray-500 mb-2 font-medium transition-opacity opacity-0">
-            ☁️ מתסנכרן מול הענן...
+            ☁️ מתסנכרן...
         </div>
 
         <main id="app-container" class="glass-panel p-6 md:p-10 mb-8 min-h-[400px] flex flex-col justify-center items-center relative overflow-hidden">
-            <div class="animate-pulse text-xl text-blue-500 font-bold">טוען משחק ושומר נתונים...</div>
+            <div class="animate-pulse text-xl text-blue-500 font-bold">טוען משחק...</div>
         </main>
 
         <section class="glass-panel p-6">
@@ -180,7 +178,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokemon-math-v2';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokemon-math-v3';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -189,9 +187,8 @@
         let state = {
             score: 0,
             pokemons: [],
-            mistakes: {}, // Format: { "a_b": required_correct_count }
+            mistakes: {}, 
             setsCompleted: 0,
-            correctSinceLastPokemon: 0,
             
             // Session logic
             currentSet: [],
@@ -200,7 +197,7 @@
             longMathSet: [],
             triangleSet: [],
             laCurrentStepIndex: 0,
-            phase: 'loading', // 'study', 'individual', 'match', 'reward', 'shop', 'long_math', 'triangles'
+            phase: 'loading', 
             currentIndex: 0,
             matchState: { selectedEq: null, selectedAns: null, completedPairs: [] },
             startTime: null,
@@ -209,9 +206,9 @@
         };
 
         const rarityLists = {
-            common: [1,4,7,10,13,16,19,21,23,25,27,29,32,37,39,41,43,46,50,52,54,58,60,69,74,92,133], // Basic forms
-            rare: [2,3,5,6,8,9,31,34,38,45,65,68,89,94,130,131,143,149], // Evolved/Strong
-            legendary: [144,145,146,150,151,243,244,245,249,250,251,382,383,384] // Legends
+            common: [1,4,7,10,13,16,19,21,23,25,27,29,32,37,39,41,43,46,50,52,54,58,60,69,74,92,133], 
+            rare: [2,3,5,6,8,9,31,34,38,45,65,68,89,94,130,131,143,149], 
+            legendary: [144,145,146,150,151,243,244,245,249,250,251,382,383,384] 
         };
 
         const container = document.getElementById('app-container');
@@ -222,63 +219,6 @@
         const syncIndicator = document.getElementById('cloud-sync-indicator');
 
         const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-        async function loadUserData() {
-            let loadedData = null;
-            
-            // 1. קריאת נתונים מהשמירה המקומית (LocalStorage)
-            const localDataRaw = localStorage.getItem('pokemonMathSave');
-            if (localDataRaw) {
-                try { loadedData = JSON.parse(localDataRaw); } catch(e) {}
-            }
-            
-            // 2. סנכרון מול הענן אם קיים חיבור פעיל
-            if (db && userId) {
-                try {
-                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'gameData', 'save');
-                    const snap = await getDoc(docRef);
-                    if (snap.exists()) {
-                        loadedData = snap.data(); // הענן מקבל עדיפות ודורס את המקומי
-                    } else if (loadedData) {
-                        // אם יש לנו מידע מקומי (למשל ממשחק קודם) ואין ענן, נגבה את המידע לענן
-                        await setDoc(docRef, loadedData);
-                    }
-                } catch (e) { console.error("Error loading data from cloud", e); }
-            }
-
-            // 3. החלת המידע שנמצא
-            if (loadedData) {
-                state.score = loadedData.score || 0;
-                state.pokemons = loadedData.pokemons || [];
-                state.mistakes = loadedData.mistakes || {};
-                state.setsCompleted = loadedData.setsCompleted || 0;
-                state.correctSinceLastPokemon = loadedData.correctSinceLastPokemon || 0;
-            }
-            
-            updatePokedex();
-            scoreDisplay.innerText = state.score;
-        }
-
-        async function saveUserData() {
-            const dataToSave = {
-                score: state.score,
-                pokemons: state.pokemons,
-                mistakes: state.mistakes,
-                setsCompleted: state.setsCompleted,
-                correctSinceLastPokemon: state.correctSinceLastPokemon
-            };
-
-            localStorage.setItem('pokemonMathSave', JSON.stringify(dataToSave));
-
-            if (db && userId) {
-                syncIndicator.style.opacity = '1';
-                try {
-                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'gameData', 'save');
-                    await setDoc(docRef, dataToSave);
-                } catch (e) { console.error("Error saving data to cloud", e); }
-                setTimeout(() => { syncIndicator.style.opacity = '0'; }, 1000);
-            }
-        }
 
         async function initApp() {
             try {
@@ -291,7 +231,6 @@
                         state.pokemons = d.pokemons || [];
                         state.mistakes = d.mistakes || {};
                         state.setsCompleted = d.setsCompleted || 0;
-                        state.correctSinceLastPokemon = d.correctSinceLastPokemon || 0;
                         loadedLocal = true;
                     } catch(e) {}
                 }
@@ -308,11 +247,15 @@
                     const snap = await getDoc(docRef);
                     if (snap.exists()) {
                         const cloudData = snap.data();
-                        state.score = cloudData.score || 0;
-                        state.pokemons = cloudData.pokemons || [];
-                        state.mistakes = cloudData.mistakes || {};
-                        state.setsCompleted = cloudData.setsCompleted || 0;
-                        state.correctSinceLastPokemon = cloudData.correctSinceLastPokemon || 0;
+                        // ענן דורס מקומי רק אם יש בו יותר התקדמות
+                        if ((cloudData.score || 0) >= state.score) {
+                            state.score = cloudData.score || 0;
+                            state.pokemons = cloudData.pokemons || [];
+                            state.mistakes = cloudData.mistakes || {};
+                            state.setsCompleted = cloudData.setsCompleted || 0;
+                        } else {
+                            await setDoc(docRef, state); // מגבה ענן עם ההתקדמות המקומית
+                        }
                     } else if (loadedLocal) {
                         await setDoc(docRef, JSON.parse(localDataRaw));
                     }
@@ -325,14 +268,32 @@
             window.startRandomSet();
         }
 
+        async function saveUserData() {
+            const dataToSave = {
+                score: state.score,
+                pokemons: state.pokemons,
+                mistakes: state.mistakes,
+                setsCompleted: state.setsCompleted
+            };
+
+            localStorage.setItem('pokemonMathSave', JSON.stringify(dataToSave));
+
+            if (db && userId) {
+                syncIndicator.style.opacity = '1';
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'gameData', 'save');
+                    await setDoc(docRef, dataToSave);
+                } catch (e) { console.error("Error saving data to cloud", e); }
+                setTimeout(() => { syncIndicator.style.opacity = '0'; }, 1000);
+            }
+        }
+
         function getMistakePair() {
             const keys = Object.keys(state.mistakes);
             if(keys.length === 0) return null;
-            // Get mistakes that still need correction
             const validKeys = keys.filter(k => state.mistakes[k] > 0);
             if(validKeys.length === 0) return null;
             
-            // Clean up cleared mistakes
             keys.forEach(k => { if(state.mistakes[k] <= 0) delete state.mistakes[k]; });
             saveUserData();
 
@@ -354,13 +315,10 @@
             const len1 = randomInt(3, 5);
             const len2 = randomInt(3, len1); 
             
-            // מספרים ללא אפסים כדי למנוע הלוואות שרשרת מורכבות מדי בשלב זה
-            let n1Str = '';
-            for(let i=0; i<len1; i++) n1Str += randomInt(1, 9).toString();
+            let n1Str = ''; for(let i=0; i<len1; i++) n1Str += randomInt(1, 9).toString();
             let n1 = parseInt(n1Str);
             
-            let n2Str = '';
-            for(let i=0; i<len2; i++) n2Str += randomInt(1, 9).toString();
+            let n2Str = ''; for(let i=0; i<len2; i++) n2Str += randomInt(1, 9).toString();
             let n2 = parseInt(n2Str);
 
             if (!isAddition && n1 < n2) { let temp = n1; n1 = n2; n2 = temp; }
@@ -402,56 +360,8 @@
         }
 
         window.generateLongMathSet = function() {
-            state.longMathSet = [
-                generateLongMathProblem(),
-                generateLongMathProblem()
-            ];
+            state.longMathSet = [generateLongMathProblem(), generateLongMathProblem()];
             state.phase = 'long_math';
-            state.currentIndex = 0;
-            
-            state.elapsedSeconds = 0;
-            document.getElementById('timer-display').classList.remove('hidden');
-            updateTimerDisplay();
-            if (state.timerInterval) clearInterval(state.timerInterval);
-            state.timerInterval = setInterval(() => {
-                state.elapsedSeconds++;
-                updateTimerDisplay();
-            }, 1000);
-            
-            render();
-        };
-
-        const triangleTemplates = [
-            // מקוריים
-            { points: "100,56 40,160 160,160", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="100" y1="152" x2="100" y2="168" stroke="#ef4444" stroke-width="3"/><line x1="63" y1="104" x2="77" y2="112" stroke="#ef4444" stroke-width="3"/><line x1="123" y1="112" x2="137" y2="104" stroke="#ef4444" stroke-width="3"/>` },
-            { points: "40,160 160,160 40,40", labels: ["ישר זווית", "שווה שוקיים"], marks: `<line x1="100" y1="152" x2="100" y2="168" stroke="#ef4444" stroke-width="3"/><line x1="32" y1="100" x2="48" y2="100" stroke="#ef4444" stroke-width="3"/><polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
-            { points: "40,160 160,160 40,80", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
-            { points: "100,80 20,120 180,120", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="56" y1="93" x2="64" y2="107" stroke="#ef4444" stroke-width="3"/><line x1="136" y1="107" x2="144" y2="93" stroke="#ef4444" stroke-width="3"/>` },
-            { points: "140,60 20,140 180,140", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
-            { points: "100,20 60,160 140,160", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="72" y1="88" x2="88" y2="92" stroke="#ef4444" stroke-width="3"/><line x1="112" y1="92" x2="128" y2="88" stroke="#ef4444" stroke-width="3"/>` },
-            { points: "80,20 20,160 160,160", labels: ["חד זווית", "שונה צלעות"], marks: `` },
-            
-            // חדשים: מסובבים והפוכים למניעת קיבעון
-            // שווה צלעות הפוך
-            { points: "40,56 160,56 100,160", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="100" y1="48" x2="100" y2="64" stroke="#ef4444" stroke-width="3"/><line x1="63" y1="112" x2="77" y2="104" stroke="#ef4444" stroke-width="3"/><line x1="123" y1="104" x2="137" y2="112" stroke="#ef4444" stroke-width="3"/>` },
-            // ישר זווית שווה שוקיים (זווית ישרה למטה מימין)
-            { points: "40,160 160,160 160,40", labels: ["ישר זווית", "שווה שוקיים"], marks: `<line x1="100" y1="152" x2="100" y2="168" stroke="#ef4444" stroke-width="3"/><line x1="152" y1="100" x2="168" y2="100" stroke="#ef4444" stroke-width="3"/><polyline points="140,160 140,140 160,140" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
-            // ישר זווית שונה צלעות (זווית ישרה למעלה משמאל)
-            { points: "40,40 160,40 40,120", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="40,60 60,60 60,40" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
-            // קהה זווית שווה שוקיים מצביע שמאלה
-            { points: "40,100 120,40 120,160", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="74" y1="62" x2="86" y2="78" stroke="#ef4444" stroke-width="3"/><line x1="74" y1="138" x2="86" y2="122" stroke="#ef4444" stroke-width="3"/>` },
-            // קהה זווית שונה צלעות הפוך
-            { points: "20,140 180,140 160,80", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
-            // חד זווית שווה שוקיים מצביע ימינה
-            { points: "160,100 40,40 40,160", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="96" y1="78" x2="104" y2="62" stroke="#ef4444" stroke-width="3"/><line x1="96" y1="122" x2="104" y2="138" stroke="#ef4444" stroke-width="3"/>` },
-            // חד זווית שונה צלעות בזווית מוזרה
-            { points: "60,40 140,160 20,120", labels: ["חד זווית", "שונה צלעות"], marks: `` }
-        ];
-
-        window.generateTriangleSet = function() {
-            let shuffled = [...triangleTemplates].sort(() => 0.5 - Math.random()).slice(0, 4);
-            state.triangleSet = shuffled;
-            state.phase = 'triangles';
             state.currentIndex = 0;
             
             state.elapsedSeconds = 0;
@@ -463,12 +373,91 @@
             render();
         };
 
+        // צורות משולשים מדויקות עם הדגשה חזקה על זוויות קהות 
+        const triangleTemplates = [
+            { points: "100,46 40,150 160,150", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="96" y1="150" x2="104" y2="150" stroke="#ef4444" stroke-width="3"/><line x1="66" y1="94" x2="74" y2="102" stroke="#ef4444" stroke-width="3"/><line x1="126" y1="102" x2="134" y2="94" stroke="#ef4444" stroke-width="3"/>` },
+            { points: "40,160 140,160 40,60", labels: ["ישר זווית", "שווה שוקיים"], marks: `<polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/><line x1="86" y1="156" x2="94" y2="164" stroke="#ef4444" stroke-width="3"/><line x1="36" y1="106" x2="44" y2="114" stroke="#ef4444" stroke-width="3"/>` },
+            { points: "40,160 160,160 40,80", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
+            
+            // קהה זווית שווה שוקיים - רחב מאוד וברור! זווית של כ-140 מעלות
+            { points: "20,130 180,130 100,100", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="57" y1="110" x2="63" y2="120" stroke="#ef4444" stroke-width="3"/><line x1="137" y1="120" x2="143" y2="110" stroke="#ef4444" stroke-width="3"/>` },
+            // קהה זווית שונה צלעות - רחב ומובהק
+            { points: "20,130 170,130 140,90", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
+            
+            { points: "40,150 160,150 100,30", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="65" y1="88" x2="75" y2="92" stroke="#ef4444" stroke-width="3"/><line x1="125" y1="92" x2="135" y2="88" stroke="#ef4444" stroke-width="3"/>` },
+            { points: "40,150 160,150 90,50", labels: ["חד זווית", "שונה צלעות"], marks: `` },
+            
+            // קהה זווית שווה שוקיים הפוך - רחב וברור
+            { points: "20,50 180,50 100,80", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="57" y1="60" x2="63" y2="70" stroke="#ef4444" stroke-width="3"/><line x1="137" y1="70" x2="143" y2="60" stroke="#ef4444" stroke-width="3"/>` },
+            { points: "40,40 140,40 140,140", labels: ["ישר זווית", "שווה שוקיים"], marks: `<polyline points="120,40 120,60 140,60" fill="none" stroke="#3b82f6" stroke-width="2"/><line x1="86" y1="36" x2="94" y2="44" stroke="#ef4444" stroke-width="3"/><line x1="136" y1="86" x2="144" y2="94" stroke="#ef4444" stroke-width="3"/>` },
+            { points: "160,160 160,40 80,40", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="140,40 140,60 160,60" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
+            
+            // קהה זווית מסובב - רחב מאוד
+            { points: "130,20 130,170 90,140", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
+            { points: "150,40 150,160 30,100", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="88" y1="65" x2="92" y2="75" stroke="#ef4444" stroke-width="3"/><line x1="92" y1="125" x2="88" y2="135" stroke="#ef4444" stroke-width="3"/>` },
+            { points: "150,100 46,40 46,160", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="42" y1="100" x2="50" y2="100" stroke="#ef4444" stroke-width="3"/><line x1="96" y1="65" x2="100" y2="75" stroke="#ef4444" stroke-width="3"/><line x1="96" y1="135" x2="100" y2="125" stroke="#ef4444" stroke-width="3"/>` },
+            // קהה זווית שווה שוקיים פונה שמאלה
+            { points: "130,20 130,180 100,100", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="110" y1="58" x2="120" y2="62" stroke="#ef4444" stroke-width="3"/><line x1="110" y1="142" x2="120" y2="138" stroke="#ef4444" stroke-width="3"/>` }
+        ];
+
+        window.generateTriangleSet = function() {
+            let shuffled = [...triangleTemplates].sort(() => 0.5 - Math.random());
+            state.triangleStudySet = shuffled.slice(0, 3);
+            state.triangleSet = shuffled.slice(3, 7);
+            state.phase = 'study_triangles';
+            state.currentIndex = 0;
+            render();
+        };
+
+        function renderStudyTriangles() {
+            const wrap = document.createElement('div');
+            wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+            let html = `
+                <h2 class="text-2xl font-bold text-blue-600 mb-2">שלב למידה - סוגי משולשים</h2>
+                <p class="text-gray-600 mb-6 font-medium">הסתכל על התכונות של 3 המשולשים, שים לב לזווית (ישרה/חדה/קהה) ולסימני הצלעות (אדום = שוות):</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl mx-auto mb-8">
+            `;
+            
+            state.triangleStudySet.forEach(q => {
+                html += `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border-2 border-blue-100 flex flex-col items-center">
+                        <svg width="150" height="150" viewBox="0 0 200 200" class="mb-3 drop-shadow-sm">
+                            <polygon points="${q.points}" fill="#eff6ff" stroke="#3b82f6" stroke-width="4" stroke-linejoin="round"/>
+                            ${q.marks || ''}
+                        </svg>
+                        <div class="font-bold text-blue-800 text-lg">${q.labels[0]}</div>
+                        <div class="font-bold text-blue-800 text-lg">${q.labels[1]}</div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                </div>
+                <button onclick="window.startTriangleQuiz()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg w-full max-w-xs">
+                    הבנתי, בוא נתחיל!
+                </button>
+            `;
+            
+            wrap.innerHTML = html;
+            container.appendChild(wrap);
+        }
+
+        window.startTriangleQuiz = function() {
+            state.phase = 'triangles';
+            state.currentIndex = 0;
+            state.elapsedSeconds = 0;
+            document.getElementById('timer-display').classList.remove('hidden');
+            updateTimerDisplay();
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => { state.elapsedSeconds++; updateTimerDisplay(); }, 1000);
+            render();
+        }
+
         window.generateNewSet = function() {
             let mults = [];
             let usedAnswers = new Set();
-            let usedPairs = new Set(); // Prevent reversed duplicates like 6x7 and 7x6
+            let usedPairs = new Set(); 
 
-            // 1. Inject up to 2 mistakes for spaced repetition
             let mistakeCount = 0;
             for(let i=0; i<2; i++) {
                 const mistake = getMistakePair();
@@ -490,7 +479,6 @@
                 }
             }
 
-            // 2. Fill the rest of the 5 questions randomly
             while (mults.length < 5) {
                 const a = randomInt(2, 10);
                 const b = randomInt(2, 10);
@@ -508,7 +496,6 @@
                 }
             }
             
-            // 3. Generate 3 division questions from the multiplication set
             let divs = [...mults].sort(() => 0.5 - Math.random()).slice(0, 3);
             divs = divs.map((q, i) => ({
                 id: 'd'+i, isDiv: true, a: q.a, b: q.b, ans: q.ans, 
@@ -517,8 +504,6 @@
             }));
             
             let allQ = [...mults, ...divs];
-            
-            // 4. Formatting: 4 Choice, 2 Input, 2 Match
             let formats = ['choice', 'choice', 'choice', 'choice', 'open', 'open', 'match', 'match'];
             formats.sort(() => 0.5 - Math.random());
             
@@ -547,15 +532,24 @@
                     if (state.mistakes[key] <= 0) delete state.mistakes[key];
                 }
             } else {
-                // If wrong, needs 3 correct answers to clear from repetition pool (max 5)
                 state.mistakes[key] = Math.min((state.mistakes[key] || 0) + 3, 5);
             }
             saveUserData();
         }
 
+        // מתן נקודות דינמי: 2 נקודות לשאלה בחיבור/חיסור והנדסה, נקודה 1 בכפל וחילוק
+        function handleCorrectAnswer() {
+            const pointsToGive = (state.phase === 'long_math' || state.phase === 'triangles') ? 2 : 1;
+            state.score += pointsToGive;
+            scoreDisplay.innerText = state.score;
+            saveUserData();
+            setTimeout(() => { advanceToNextQuestion(); }, 1000);
+        }
+
         function render() {
             container.innerHTML = '';
             if (state.phase === 'study') renderStudyPhase();
+            else if (state.phase === 'study_triangles') renderStudyTriangles();
             else if (state.phase === 'individual') {
                 const q = state.individualQuestions[state.currentIndex];
                 if (q.format === 'choice') renderChoiceQuestion(q, state.currentIndex, state.individualQuestions.length);
@@ -650,7 +644,7 @@
 
             if (userValue === correctAnswer) {
                 handleQuestionResult(corePair, true);
-                feedback.innerHTML = '<span class="text-green-500">כל הכבוד! אלוף! 👏</span>';
+                feedback.innerHTML = '<span class="text-green-500">כל הכבוד! אלוף! 👏 (+1 נק\')</span>';
                 input.className = 'w-24 h-16 text-center border-4 border-green-500 bg-green-50 rounded-xl text-4xl text-green-700';
                 input.disabled = true;
                 handleCorrectAnswer();
@@ -713,7 +707,7 @@
             if (selected === correct) {
                 handleQuestionResult(corePair, true);
                 btn.className = 'bg-green-500 border-2 border-green-600 text-white text-xl font-bold py-3 rounded-xl shadow-md transition transform scale-105';
-                feedback.innerHTML = '<span class="text-green-500">כל הכבוד! אלוף! 👏</span>';
+                feedback.innerHTML = '<span class="text-green-500">כל הכבוד! אלוף! 👏 (+1 נק\')</span>';
                 Array.from(grid.children).forEach(b => b.disabled = true);
                 handleCorrectAnswer();
             } else {
@@ -831,7 +825,7 @@
                 
                 state.matchState.completedPairs.push({ eq: eq.id, ans: ans.id });
                 drawLines();
-                feedback.innerHTML = '<span class="text-green-500">נכון מאוד!</span>';
+                feedback.innerHTML = '<span class="text-green-500">נכון מאוד! (+1 נק\')</span>';
                 
                 state.matchState.selectedEq = null; state.matchState.selectedAns = null;
 
@@ -839,15 +833,14 @@
                     feedback.innerHTML = '<span class="text-green-500">סיימת את כולם, אלוף! 👏</span>';
                     window.removeEventListener('resize', resizeCanvas);
                     setTimeout(() => {
-                        state.score += state.matchQuestions.length;
-                        state.correctSinceLastPokemon += state.matchQuestions.length;
+                        state.score += state.matchQuestions.length; // נקודה על כל זוג
                         scoreDisplay.innerText = state.score;
                         saveUserData();
-                        checkRewardOrAdvance(true);
+                        showSetComplete();
                     }, 1500);
                 }
             } else {
-                handleQuestionResult(corePair, false); // Log mistake
+                handleQuestionResult(corePair, false); 
                 feedback.innerHTML = '<span class="text-red-500">נסה שוב! תמתח קו אחר.</span>';
                 eq.classList.remove('selected'); ans.classList.remove('selected');
                 eq.classList.add('animate-pulse'); ans.classList.add('animate-pulse');
@@ -891,25 +884,21 @@
             
             let gridHtml = `<div class="grid gap-1 md:gap-2 text-3xl font-bold font-mono bg-white p-6 rounded-2xl shadow-sm border-2 border-gray-100" style="grid-template-columns: auto repeat(${q.gridCols}, minmax(40px, 1fr)); direction: ltr; width: fit-content; margin: 0 auto;">`;
             
-            // Row 0: Carries or Borrows
             gridHtml += `<div></div>`;
             for(let c = q.gridCols - 1; c >= 0; c--) {
                 gridHtml += `<div class="flex justify-center h-10 items-end"><input id="carry-${c}" class="w-8 h-8 text-xl text-center font-bold text-red-500 border-b-2 border-red-200 bg-transparent opacity-0 transition-all duration-300 outline-none" disabled maxlength="1" inputmode="numeric"></div>`;
             }
             
-            // Row 1: Num 1
             gridHtml += `<div></div>`;
             for(let c = q.gridCols - 1; c >= 0; c--) {
                 gridHtml += `<div class="text-center relative"><span id="n1-${c}">${q.s1[c] !== undefined ? q.s1[c] : ''}</span></div>`;
             }
             
-            // Row 2: Num 2
             gridHtml += `<div class="text-blue-500 flex items-center pr-4">${q.op}</div>`;
             for(let c = q.gridCols - 1; c >= 0; c--) {
                 gridHtml += `<div class="text-center border-b-4 border-gray-800 pb-2">${q.s2[c] !== undefined ? q.s2[c] : ''}</div>`;
             }
             
-            // Row 3: Result
             gridHtml += `<div></div>`;
             for(let c = q.gridCols - 1; c >= 0; c--) {
                 gridHtml += `<div class="flex justify-center pt-4"><input id="res-${c}" class="w-12 h-14 text-3xl text-center font-bold border-2 border-gray-300 rounded-lg bg-gray-50 opacity-0 transition-all duration-300 outline-none" disabled maxlength="1" inputmode="numeric"></div>`;
@@ -928,7 +917,7 @@
         window.activateNextLongMathStep = function() {
             const q = state.longMathSet[state.currentIndex];
             if (state.laCurrentStepIndex >= q.steps.length) {
-                document.getElementById('feedback-msg').innerHTML = '<span class="text-green-500">מעולה! עבודה יפה! 👏</span>';
+                document.getElementById('feedback-msg').innerHTML = '<span class="text-green-500">מעולה! עבודה יפה! 👏 (+2 נק\')</span>';
                 setTimeout(() => {
                     handleCorrectAnswer(); 
                 }, 1000);
@@ -984,11 +973,25 @@
             wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
             wrap.id = 'question-wrap';
             
-            const options = ["שווה צלעות", "שווה שוקיים", "שונה צלעות", "חד זווית", "ישר זווית", "קהה זווית"];
+            const correctString = q.labels.join(" ו");
+            
+            const allPossiblePairs = [
+                "חד זווית ושווה צלעות", "חד זווית ושווה שוקיים", "חד זווית ושונה צלעות",
+                "ישר זווית ושווה שוקיים", "ישר זווית ושונה צלעות",
+                "קהה זווית ושווה שוקיים", "קהה זווית ושונה צלעות"
+            ];
+            
+            let options = new Set();
+            options.add(correctString);
+            while(options.size < 4) {
+                const randomPair = allPossiblePairs[randomInt(0, allPossiblePairs.length - 1)];
+                options.add(randomPair);
+            }
+            const finalOptions = Array.from(options).sort(() => 0.5 - Math.random());
             
             let html = `
                 <div class="text-sm text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full">שאלה ${state.currentIndex + 1} מתוך 4 (הנדסה - משולשים)</div>
-                <h3 class="text-xl font-bold mb-4 text-gray-700">סמן את כל המאפיינים שמתאימים למשולש הזה:</h3>
+                <h3 class="text-xl font-bold mb-4 text-gray-700">בחר את התיאור הנכון ביותר למשולש:</h3>
                 
                 <div class="bg-white p-4 rounded-2xl shadow-sm border-2 border-gray-100 mb-6 w-full max-w-sm">
                     <svg width="200" height="200" viewBox="0 0 200 200" class="mx-auto drop-shadow-md">
@@ -996,68 +999,44 @@
                         ${q.marks || ''}
                     </svg>
                 </div>
-                
-                <div class="grid grid-cols-2 gap-3 max-w-md mx-auto mb-6 text-right w-full px-4 text-lg">
-            `;
-            
-            options.forEach((opt, idx) => {
-                html += `
-                    <label class="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-blue-50 transition">
-                        <input type="checkbox" value="${opt}" class="triangle-cb w-5 h-5 text-blue-600 rounded focus:ring-blue-500">
-                        <span>${opt}</span>
-                    </label>
-                `;
-            });
-            
-            html += `</div>
-                <div id="feedback-msg" class="h-8 text-lg font-bold mb-4 w-full"></div>
-                <button onclick="window.checkTriangleAnswer()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg w-full max-w-xs">בדוק</button>
             `;
             
             wrap.innerHTML = html;
+            
+            const optionsGrid = document.createElement('div');
+            optionsGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3 max-w-md mx-auto mb-6 w-full px-4 text-lg';
+            
+            finalOptions.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'bg-gray-50 border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-300 text-gray-800 font-bold py-3 px-4 rounded-xl shadow-sm transition transform active:scale-95';
+                btn.innerText = opt;
+                btn.onclick = () => window.checkTriangleAnswer(opt, correctString, btn, optionsGrid);
+                optionsGrid.appendChild(btn);
+            });
+            
+            wrap.appendChild(optionsGrid);
+            wrap.insertAdjacentHTML('beforeend', '<div id="feedback-msg" class="h-8 text-lg font-bold mb-4 w-full"></div>');
             container.appendChild(wrap);
         }
 
-        window.checkTriangleAnswer = function() {
-            const q = state.triangleSet[state.currentIndex];
-            const checkboxes = document.querySelectorAll('.triangle-cb');
-            let selected = [];
-            checkboxes.forEach(cb => { if (cb.checked) selected.push(cb.value); });
-            
-            const isCorrect = selected.length === q.labels.length && selected.every(val => q.labels.includes(val));
+        window.checkTriangleAnswer = function(selected, correct, btn, grid) {
             const feedback = document.getElementById('feedback-msg');
             
-            if (isCorrect) {
-                feedback.innerHTML = '<span class="text-green-500">תשובה מושלמת! 👏</span>';
-                checkboxes.forEach(cb => cb.disabled = true);
+            if (selected === correct) {
+                feedback.innerHTML = '<span class="text-green-500">תשובה מושלמת! 👏 (+2 נק\')</span>';
+                btn.className = 'bg-green-500 border-2 border-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition transform scale-105';
+                Array.from(grid.children).forEach(b => b.disabled = true);
                 setTimeout(() => { handleCorrectAnswer(); }, 1000);
             } else {
-                feedback.innerHTML = '<span class="text-red-500">לא מדויק. בדוק שוב את הזוויות והצלעות!</span>';
+                feedback.innerHTML = '<span class="text-red-500">לא מדויק. נסה תשובה אחרת!</span>';
+                btn.className = 'bg-red-100 border-2 border-red-300 text-red-500 font-bold py-3 px-4 rounded-xl shadow-sm transition opacity-50';
+                btn.disabled = true;
                 const wrap = document.getElementById('question-wrap');
                 wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
             }
         }
 
-        function handleCorrectAnswer() {
-            state.score++;
-            state.correctSinceLastPokemon++;
-            scoreDisplay.innerText = state.score;
-            saveUserData();
-            setTimeout(() => { checkRewardOrAdvance(false); }, 1000);
-        }
-
-        function checkRewardOrAdvance(fromMatchGame) {
-            const isRewardTime = (state.correctSinceLastPokemon >= 16);
-            if (isRewardTime) {
-                state.correctSinceLastPokemon = 0;
-                saveUserData();
-                fetchAndShowPokemonReward();
-            } else {
-                if (fromMatchGame) showSetComplete(); else advanceToNextQuestion();
-            }
-        }
-
-        function advanceToNextQuestion(returningFromReward = false) {
+        function advanceToNextQuestion() {
             if (state.phase === 'individual' || state.phase === 'long_math' || state.phase === 'triangles') {
                 state.currentIndex++;
             }
@@ -1078,11 +1057,9 @@
                     showSetComplete();
                 } else { render(); }
             }
-            else if (state.phase === 'match') {
-                showSetComplete();
-            }
         }
 
+        // שינוי חדש: מתן פוקימון במתנה בסיום כל סט מכל סוג
         function showSetComplete() {
             if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
             document.getElementById('timer-display').classList.add('hidden');
@@ -1097,7 +1074,6 @@
             }
             
             let bonusHtml = '';
-            // Speed bonus for < 60s
             if (state.elapsedSeconds > 0 && state.elapsedSeconds <= 60) {
                 const bonus = 10;
                 state.score += bonus;
@@ -1112,14 +1088,20 @@
                     <p class="text-lg text-gray-700 mb-2">זמן ביצוע: <b>${timeText}</b></p>
                     ${bonusHtml}
                     <div id="next-action-area" class="mt-8 flex flex-col gap-3 items-center w-full">
+                        <button onclick="window.claimSetReward()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full shadow-lg transform transition active:scale-95 text-2xl w-full animate-bounce">🎁 קבל פוקימון במתנה!</button>
                         ${state.setsCompleted % 3 === 0 
                             ? `<button onclick="window.openShop()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-xl w-full">🛒 חנות פוקימונים פתוחה!</button>`
                             : ``
                         }
-                        <button onclick="window.startRandomSet()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-xl w-full">המשך לאתגר הבא! 🚀</button>
                     </div>
                 </div>
             `;
+        }
+
+        window.claimSetReward = function() {
+            const isRare = Math.random() > 0.8; 
+            const id = getRandomId(isRare ? 'rare' : 'common');
+            revealPokemonInteractive([id], 'reward');
         }
 
         window.openShop = function(fromMenu = false) {
@@ -1134,21 +1116,18 @@
                     <p class="text-gray-600 mb-6">יש לך כרגע <b>${state.score}</b> נקודות</p>
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <!-- Basic Pack -->
                         <div class="bg-white border-2 border-gray-200 rounded-xl p-4 flex flex-col items-center shadow hover:shadow-md transition">
                             <div class="text-4xl mb-2">🎒</div>
                             <h3 class="font-bold text-lg">חבילה רגילה</h3>
                             <p class="text-sm text-gray-500 mb-4">3 פוקימונים רגילים</p>
                             <button onclick="window.buyPack(15, 'basic')" class="${state.score >= 15 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-2 px-6 rounded-full w-full">15 נק'</button>
                         </div>
-                        <!-- Super Pack -->
                         <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex flex-col items-center shadow hover:shadow-md transition">
                             <div class="text-4xl mb-2">💼</div>
                             <h3 class="font-bold text-lg text-blue-700">חבילה נדירה</h3>
                             <p class="text-sm text-blue-600 mb-4">2 רגילים, 1 נדיר!</p>
                             <button onclick="window.buyPack(30, 'super')" class="${state.score >= 30 ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-2 px-6 rounded-full w-full">30 נק'</button>
                         </div>
-                        <!-- Ultra Pack -->
                         <div class="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 flex flex-col items-center shadow-lg transform hover:scale-105 transition relative">
                             <div class="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">לוהט!</div>
                             <div class="text-4xl mb-2">🎁</div>
@@ -1178,7 +1157,6 @@
                 idsToFetch = [getRandomId('common'), getRandomId('rare'), getRandomId('legendary')];
             }
 
-            // Show interactive unpack with correct pack design
             revealPokemonInteractive(idsToFetch, 'pack', type);
         }
 
@@ -1199,15 +1177,7 @@
             };
         }
 
-        function fetchAndShowPokemonReward() {
-            // Normal reward is usually common/rare
-            const isRare = Math.random() > 0.8; 
-            const id = getRandomId(isRare ? 'rare' : 'common');
-            revealPokemonInteractive([id], 'reward');
-        }
-
         function revealPokemonInteractive(idsToFetch, context, packType = 'basic') {
-            const previousPhase = state.phase;
             state.phase = 'reward';
             
             let clicksNeeded = context === 'pack' ? 5 : 3;
@@ -1232,7 +1202,7 @@
             container.innerHTML = `
                 <div class="text-center bounce-in flex flex-col items-center justify-center min-h-[300px]">
                     <h2 class="text-2xl font-bold text-gray-700 mb-2">
-                        ${context === 'pack' ? 'קנית חבילה! לחץ עליה כדי לפתוח' : 'מצאת פוקימון! לחץ כדי לתפוס אותו'}
+                        ${context === 'pack' ? 'קנית חבילה! לחץ עליה כדי לפתוח' : 'הנה הפרס שלך! לחץ כדי לתפוס אותו'}
                     </h2>
                     ${interactiveElementHtml}
                     <div class="mt-4 w-48 h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner">
@@ -1256,16 +1226,16 @@
                     item.onclick = null;
                     if (context === 'pack') {
                         item.classList.remove('shake-hard');
-                        item.classList.add('rip-open'); // Rip open animation!
-                        setTimeout(() => showLoadingAndFetch(idsToFetch, context, previousPhase), 800);
+                        item.classList.add('rip-open'); 
+                        setTimeout(() => showLoadingAndFetch(idsToFetch, context), 800);
                     } else {
-                        showLoadingAndFetch(idsToFetch, context, previousPhase);
+                        showLoadingAndFetch(idsToFetch, context);
                     }
                 }
             };
         }
 
-        async function showLoadingAndFetch(idsToFetch, context, previousPhase) {
+        async function showLoadingAndFetch(idsToFetch, context) {
             container.innerHTML = `
                 <div class="text-center flex flex-col items-center justify-center min-h-[300px] bounce-in">
                     <div class="animate-spin rounded-full h-16 w-16 border-b-4 ${context === 'pack' ? 'border-purple-500' : 'border-red-500'} mb-4"></div>
@@ -1274,7 +1244,6 @@
             `;
             
             try {
-                // BUG FIX: Promise.allSettled ensures one failed download doesn't ruin the whole pack!
                 const pokemonsResults = await Promise.allSettled(idsToFetch.map(id => fetchPokemonData(id)));
                 const pokemons = pokemonsResults.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
                 
@@ -1284,7 +1253,6 @@
                 saveUserData();
                 updatePokedex();
 
-                // Display revealed pokemons with Card Flip animation
                 let gridHtml = `<div class="flex flex-wrap justify-center gap-6 mb-8 mt-6">`;
                 
                 pokemons.forEach((p, index) => {
@@ -1293,7 +1261,6 @@
                     const title = p.rarity === 'legendary' ? '⭐ אגדי!' : (p.rarity === 'rare' ? '🌟 נדיר!' : '');
                     
                     if (context === 'pack') {
-                        // TCG Card style for packs
                         gridHtml += `
                             <div class="tcg-card-container bounce-in" style="animation-delay: ${index * 0.2}s" onclick="this.classList.toggle('flipped')">
                                 <div class="tcg-card-inner">
@@ -1307,7 +1274,6 @@
                             </div>
                         `;
                     } else {
-                        // Regular showcase for single reward
                         gridHtml += `
                             <div class="bounce-in flex flex-col items-center p-4 rounded-xl border-4 ${bgClass} shadow-lg" style="width: 160px; border-color: ${borderColor}">
                                 ${title ? `<span class="text-xs font-bold mb-2">${title}</span>` : ''}
@@ -1329,12 +1295,11 @@
                         ${gridHtml}
                         
                         <button id="reward-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg mt-4">
-                            מעולה! המשך
+                            המשך לאתגר הבא!
                         </button>
                     </div>
                 `;
 
-                // Auto-flip cards in pack after a short delay
                 if (context === 'pack') {
                     setTimeout(() => {
                         const cards = document.querySelectorAll('.tcg-card-container');
@@ -1345,21 +1310,12 @@
                 }
 
                 document.getElementById('reward-btn').onclick = () => {
-                    if (context === 'pack') {
-                        window.generateNewSet();
-                    } else {
-                        state.phase = previousPhase;
-                        advanceToNextQuestion(true);
-                    }
+                    window.startRandomSet();
                 };
             } catch (error) {
                 console.error("Error fetching pokemons:", error);
-                // Fallback safe net
                 container.innerHTML = `<div class="text-center text-red-500 font-bold mb-4">הייתה בעיה קטנה באינטרנט. אל דאגה, הנקודות שלך נשמרו!</div>`;
-                setTimeout(() => {
-                    if (context === 'pack') window.generateNewSet();
-                    else { state.phase = previousPhase; advanceToNextQuestion(true); }
-                }, 3000);
+                setTimeout(() => { window.startRandomSet(); }, 3000);
             }
         }
 
@@ -1368,7 +1324,6 @@
             if (state.pokemons.length > 0) pokedexEmpty.style.display = 'none';
             
             pokedex.innerHTML = '';
-            // Render backwards to show newest first
             [...state.pokemons].reverse().forEach((pokemon, i) => {
                 const div = document.createElement('div');
                 const rarityClass = `rarity-${pokemon.rarity || 'common'}`;
@@ -1382,7 +1337,6 @@
             });
         }
 
-        // Start app
         window.onload = () => {
             initApp();
         };
