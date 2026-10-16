@@ -196,6 +196,7 @@
             matchQuestions: [],
             longMathSet: [],
             triangleSet: [],
+            fractionSet: [],
             laCurrentStepIndex: 0,
             phase: 'loading', 
             currentIndex: 0,
@@ -247,14 +248,13 @@
                     const snap = await getDoc(docRef);
                     if (snap.exists()) {
                         const cloudData = snap.data();
-                        // ענן דורס מקומי רק אם יש בו יותר התקדמות
                         if ((cloudData.score || 0) >= state.score) {
                             state.score = cloudData.score || 0;
                             state.pokemons = cloudData.pokemons || [];
                             state.mistakes = cloudData.mistakes || {};
                             state.setsCompleted = cloudData.setsCompleted || 0;
                         } else {
-                            await setDoc(docRef, state); // מגבה ענן עם ההתקדמות המקומית
+                            await setDoc(docRef, state);
                         }
                     } else if (loadedLocal) {
                         await setDoc(docRef, JSON.parse(localDataRaw));
@@ -304,11 +304,140 @@
         }
 
         window.startRandomSet = function() {
-            const rand = randomInt(0, 2);
+            const rand = randomInt(0, 3);
             if (rand === 0) window.generateNewSet();
             else if (rand === 1) window.generateLongMathSet();
-            else window.generateTriangleSet();
+            else if (rand === 2) window.generateTriangleSet();
+            else window.generateFractionSet();
         }
+
+        // ========================== פונקציות לשברים פשוטים ==========================
+        function getFractionSvg(shape, colored, total) {
+            let svg = '';
+            if (shape === 'rect') {
+                svg += `<svg width="200" height="100" viewBox="0 0 200 100" class="mx-auto drop-shadow-md border-2 border-gray-800 rounded-sm">`;
+                const partWidth = 200 / total;
+                for (let i = 0; i < total; i++) {
+                    const fill = i < colored ? '#3b82f6' : '#ffffff';
+                    svg += `<rect x="${i * partWidth}" y="0" width="${partWidth}" height="100" fill="${fill}" stroke="#1f2937" stroke-width="2"/>`;
+                }
+                svg += `</svg>`;
+            } else {
+                svg += `<svg width="150" height="150" viewBox="0 0 150 150" class="mx-auto drop-shadow-md">`;
+                svg += `<circle cx="75" cy="75" r="70" fill="#ffffff" stroke="#1f2937" stroke-width="2"/>`;
+                for (let i = 0; i < total; i++) {
+                    const startAngle = (i * 360) / total;
+                    const endAngle = ((i + 1) * 360) / total;
+                    const startRad = (startAngle - 90) * Math.PI / 180;
+                    const endRad = (endAngle - 90) * Math.PI / 180;
+                    const x1 = 75 + 70 * Math.cos(startRad);
+                    const y1 = 75 + 70 * Math.sin(startRad);
+                    const x2 = 75 + 70 * Math.cos(endRad);
+                    const y2 = 75 + 70 * Math.sin(endRad);
+                    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+                    const fill = i < colored ? '#3b82f6' : 'transparent';
+                    
+                    if (total > 1) {
+                        // שימוש בפסיקים למניעת שגיאות שרשור מחרוזות בהיעדר רווחים
+                        svg += `<path d="M 75,75 L ${x1},${y1} A 70,70 0 ${largeArcFlag},1 ${x2},${y2} Z" fill="${fill}" stroke="#1f2937" stroke-width="2"/>`;
+                    }
+                }
+                svg += `</svg>`;
+            }
+            return svg;
+        }
+
+        window.generateFractionSet = function() {
+            state.fractionSet = [];
+            for(let i=0; i<5; i++) {
+                const total = randomInt(2, 10);
+                const colored = randomInt(1, total - 1); // לפחות 1, מקסימום אחד פחות מהכל
+                const shape = Math.random() > 0.5 ? 'rect' : 'circle';
+                
+                const correct = `${colored}/${total}`;
+                
+                let options = new Set();
+                options.add(correct);
+                while(options.size < 4) {
+                    let rTotal = randomInt(2, 10);
+                    let rColored = randomInt(1, rTotal - 1);
+                    options.add(`${rColored}/${rTotal}`);
+                }
+                
+                state.fractionSet.push({
+                    total, colored, shape, correct,
+                    options: Array.from(options).sort(() => 0.5 - Math.random())
+                });
+            }
+            state.phase = 'fractions';
+            state.currentIndex = 0;
+            state.elapsedSeconds = 0;
+            document.getElementById('timer-display').classList.remove('hidden');
+            updateTimerDisplay();
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => { state.elapsedSeconds++; updateTimerDisplay(); }, 1000);
+            render();
+        }
+
+        function renderFractions() {
+            const q = state.fractionSet[state.currentIndex];
+            const wrap = document.createElement('div');
+            wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+            wrap.id = 'question-wrap';
+            
+            let html = `
+                <div class="text-sm text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full">שאלה ${state.currentIndex + 1} מתוך 5 (שברים פשוטים)</div>
+                <h3 class="text-xl font-bold mb-4 text-gray-700">איזה שבר מתאר את החלק הצבוע?</h3>
+                
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-2 border-gray-100 mb-6 w-full max-w-sm flex justify-center items-center">
+                    ${getFractionSvg(q.shape, q.colored, q.total)}
+                </div>
+            `;
+            
+            wrap.innerHTML = html;
+            
+            const optionsGrid = document.createElement('div');
+            optionsGrid.className = 'grid grid-cols-2 md:grid-cols-4 gap-3 max-w-md mx-auto mb-6 w-full px-4 text-xl';
+            
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'bg-gray-50 border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-300 text-gray-800 font-bold py-3 px-4 rounded-xl shadow-sm transition transform active:scale-95';
+                
+                const [top, bottom] = opt.split('/');
+                btn.innerHTML = `<div class="flex flex-col items-center justify-center font-mono leading-none">
+                                    <span>${top}</span>
+                                    <hr class="w-6 border-gray-800 my-1">
+                                    <span>${bottom}</span>
+                                 </div>`;
+                
+                btn.onclick = () => window.checkFractionAnswer(opt, q.correct, btn, optionsGrid);
+                optionsGrid.appendChild(btn);
+            });
+            
+            wrap.appendChild(optionsGrid);
+            wrap.insertAdjacentHTML('beforeend', '<div id="feedback-msg" class="h-8 text-lg font-bold mb-4 w-full"></div>');
+            container.appendChild(wrap);
+        }
+
+        window.checkFractionAnswer = function(selected, correct, btn, grid) {
+            const feedback = document.getElementById('feedback-msg');
+            
+            if (selected === correct) {
+                feedback.innerHTML = '<span class="text-green-500">תשובה מושלמת! 👏 (+2 נק\')</span>';
+                btn.className = 'bg-green-500 border-2 border-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition transform scale-105';
+                btn.innerHTML = btn.innerHTML.replace(/border-gray-800/g, 'border-white');
+                Array.from(grid.children).forEach(b => b.disabled = true);
+                setTimeout(() => { handleCorrectAnswer(); }, 1000);
+            } else {
+                feedback.innerHTML = '<span class="text-red-500">טעות. נסה שבר אחר!</span>';
+                btn.className = 'bg-red-100 border-2 border-red-300 text-red-500 font-bold py-3 px-4 rounded-xl shadow-sm transition opacity-50';
+                btn.innerHTML = btn.innerHTML.replace(/border-gray-800/g, 'border-red-500');
+                btn.disabled = true;
+                const wrap = document.getElementById('question-wrap');
+                wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
+            }
+        }
+        // ==============================================================================
 
         function generateLongMathProblem() {
             const isAddition = Math.random() > 0.5;
@@ -373,30 +502,20 @@
             render();
         };
 
-        // צורות משולשים מדויקות עם הדגשה חזקה על זוויות קהות 
         const triangleTemplates = [
             { points: "100,46 40,150 160,150", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="96" y1="150" x2="104" y2="150" stroke="#ef4444" stroke-width="3"/><line x1="66" y1="94" x2="74" y2="102" stroke="#ef4444" stroke-width="3"/><line x1="126" y1="102" x2="134" y2="94" stroke="#ef4444" stroke-width="3"/>` },
             { points: "40,160 140,160 40,60", labels: ["ישר זווית", "שווה שוקיים"], marks: `<polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/><line x1="86" y1="156" x2="94" y2="164" stroke="#ef4444" stroke-width="3"/><line x1="36" y1="106" x2="44" y2="114" stroke="#ef4444" stroke-width="3"/>` },
             { points: "40,160 160,160 40,80", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
-            
-            // קהה זווית שווה שוקיים - רחב מאוד וברור! זווית של כ-140 מעלות
             { points: "20,130 180,130 100,100", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="57" y1="110" x2="63" y2="120" stroke="#ef4444" stroke-width="3"/><line x1="137" y1="120" x2="143" y2="110" stroke="#ef4444" stroke-width="3"/>` },
-            // קהה זווית שונה צלעות - רחב ומובהק
             { points: "20,130 170,130 140,90", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
-            
             { points: "40,150 160,150 100,30", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="65" y1="88" x2="75" y2="92" stroke="#ef4444" stroke-width="3"/><line x1="125" y1="92" x2="135" y2="88" stroke="#ef4444" stroke-width="3"/>` },
             { points: "40,150 160,150 90,50", labels: ["חד זווית", "שונה צלעות"], marks: `` },
-            
-            // קהה זווית שווה שוקיים הפוך - רחב וברור
             { points: "20,50 180,50 100,80", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="57" y1="60" x2="63" y2="70" stroke="#ef4444" stroke-width="3"/><line x1="137" y1="70" x2="143" y2="60" stroke="#ef4444" stroke-width="3"/>` },
             { points: "40,40 140,40 140,140", labels: ["ישר זווית", "שווה שוקיים"], marks: `<polyline points="120,40 120,60 140,60" fill="none" stroke="#3b82f6" stroke-width="2"/><line x1="86" y1="36" x2="94" y2="44" stroke="#ef4444" stroke-width="3"/><line x1="136" y1="86" x2="144" y2="94" stroke="#ef4444" stroke-width="3"/>` },
             { points: "160,160 160,40 80,40", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="140,40 140,60 160,60" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
-            
-            // קהה זווית מסובב - רחב מאוד
             { points: "130,20 130,170 90,140", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
             { points: "150,40 150,160 30,100", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="88" y1="65" x2="92" y2="75" stroke="#ef4444" stroke-width="3"/><line x1="92" y1="125" x2="88" y2="135" stroke="#ef4444" stroke-width="3"/>` },
             { points: "150,100 46,40 46,160", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="42" y1="100" x2="50" y2="100" stroke="#ef4444" stroke-width="3"/><line x1="96" y1="65" x2="100" y2="75" stroke="#ef4444" stroke-width="3"/><line x1="96" y1="135" x2="100" y2="125" stroke="#ef4444" stroke-width="3"/>` },
-            // קהה זווית שווה שוקיים פונה שמאלה
             { points: "130,20 130,180 100,100", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="110" y1="58" x2="120" y2="62" stroke="#ef4444" stroke-width="3"/><line x1="110" y1="142" x2="120" y2="138" stroke="#ef4444" stroke-width="3"/>` }
         ];
 
@@ -537,7 +656,6 @@
             saveUserData();
         }
 
-        // מתן נקודות דינמי: 2 נקודות לשאלה בחיבור/חיסור והנדסה, נקודה 1 בכפל וחילוק
         function handleCorrectAnswer() {
             const pointsToGive = (state.phase === 'long_math' || state.phase === 'triangles') ? 2 : 1;
             state.score += pointsToGive;
@@ -559,6 +677,7 @@
             else if (state.phase === 'shop') renderShop();
             else if (state.phase === 'long_math') renderLongMath();
             else if (state.phase === 'triangles') renderTriangles();
+            else if (state.phase === 'fractions') renderFractions();
         }
 
         function renderStudyPhase() {
@@ -833,7 +952,7 @@
                     feedback.innerHTML = '<span class="text-green-500">סיימת את כולם, אלוף! 👏</span>';
                     window.removeEventListener('resize', resizeCanvas);
                     setTimeout(() => {
-                        state.score += state.matchQuestions.length; // נקודה על כל זוג
+                        state.score += state.matchQuestions.length; 
                         scoreDisplay.innerText = state.score;
                         saveUserData();
                         showSetComplete();
@@ -1037,7 +1156,7 @@
         }
 
         function advanceToNextQuestion() {
-            if (state.phase === 'individual' || state.phase === 'long_math' || state.phase === 'triangles') {
+            if (state.phase === 'individual' || state.phase === 'long_math' || state.phase === 'triangles' || state.phase === 'fractions') {
                 state.currentIndex++;
             }
 
@@ -1057,9 +1176,13 @@
                     showSetComplete();
                 } else { render(); }
             }
+            else if (state.phase === 'fractions') {
+                if (state.currentIndex >= state.fractionSet.length) {
+                    showSetComplete();
+                } else { render(); }
+            }
         }
 
-        // שינוי חדש: מתן פוקימון במתנה בסיום כל סט מכל סוג
         function showSetComplete() {
             if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
             document.getElementById('timer-display').classList.add('hidden');
