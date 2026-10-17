@@ -98,7 +98,7 @@
                         <table class="w-full text-right border-collapse">
                             <thead>
                                 <tr class="text-gray-500 text-sm border-b">
-                                    <th class="pb-2 font-medium">מזהה שחקן</th>
+                                    <th class="pb-2 font-medium">שם שחקן</th>
                                     <th class="pb-2 font-medium">ניקוד מצטבר</th>
                                     <th class="pb-2 font-medium">סטים שפתר</th>
                                     <th class="pb-2 font-medium">פוקימונים באוסף</th>
@@ -121,16 +121,9 @@
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collectionGroup, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // הגדרות Firebase
-        const appId = 'pokemon-math-v3';
-        const firebaseConfig = {
-                        apiKey: "AIzaSyDCX6HeAMyGxSm9cm_8AR3rSl4bHabI7zo",
-                        authDomain: "pokemon-math-game-86791.firebaseapp.com",
-                        projectId: "pokemon-math-game-86791",
-                        storageBucket: "pokemon-math-game-86791.firebasestorage.app",
-                        messagingSenderId: "168704678655",
-                        appId: "1:168704678655:web:75d3ac91d0ea09461d8aca"
-                      };
-        const initialAuthToken =  null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokemon-math-v3';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db, auth;
         
@@ -226,8 +219,6 @@
         // טעינת נתוני השחקנים
         async function loadMetrics() {
             try {
-                // שימוש ב-Collection Group Query כדי להביא את כל מסמכי השמירה של כל המשתמשים
-                // הערה: נדרש אינדקס ב-Firestore עבור שאילתה זו על 'gameData'
                 const gameDataQuery = collectionGroup(db, 'gameData');
                 const querySnapshot = await getDocs(gameDataQuery);
                 
@@ -243,7 +234,6 @@
                     totalScore += (data.score || 0);
                     totalSets += (data.setsCompleted || 0);
                     
-                    // אגרגציה של טעויות
                     if (data.mistakes) {
                         Object.keys(data.mistakes).forEach(key => {
                             globalMistakes[key] = (globalMistakes[key] || 0) + data.mistakes[key];
@@ -251,14 +241,14 @@
                     }
 
                     usersList.push({
-                        id: doc.ref.parent.parent.id.substring(0, 8) + '...', // מזהה מקוצר
+                        id: doc.ref.parent.parent.id.substring(0, 8),
+                        playerName: data.playerName || 'שחקן אנונימי',
                         score: data.score || 0,
                         setsCompleted: data.setsCompleted || 0,
                         pokemons: (data.pokemons || []).length
                     });
                 });
 
-                // עדכון מדדים עליונים
                 document.getElementById('total-users').innerText = usersCount;
                 document.getElementById('total-sets').innerText = totalSets;
                 document.getElementById('avg-score').innerText = usersCount > 0 ? Math.round(totalScore / usersCount) : 0;
@@ -277,11 +267,10 @@
             const tbody = document.getElementById('mistakes-table-body');
             tbody.innerHTML = '';
 
-            // המרה למערך ומיון לפי כמות הטעויות (מהגבוה לנמוך)
             const sortedMistakes = Object.entries(mistakes)
                 .filter(([_, count]) => count > 0)
                 .sort((a, b) => b[1] - a[1])
-                .slice(0, 10); // הצגת 10 הטעויות הנפוצות ביותר
+                .slice(0, 10); 
 
             if (sortedMistakes.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">אין עדיין מספיק נתוני טעויות 👏</td></tr>';
@@ -310,7 +299,6 @@
             const tbody = document.getElementById('users-table-body');
             tbody.innerHTML = '';
 
-            // מיון משתמשים לפי ניקוד
             users.sort((a, b) => b.score - a.score);
 
             if (users.length === 0) {
@@ -326,7 +314,10 @@
 
                 tbody.innerHTML += `
                     <tr class="border-b last:border-0 hover:bg-gray-50 transition">
-                        <td class="py-3 text-gray-600 font-mono text-sm">${badge}${user.id}</td>
+                        <td class="py-3 text-gray-800 font-bold text-base whitespace-nowrap">
+                            ${badge}${user.playerName} 
+                            <span class="text-xs text-gray-400 font-normal mr-2 font-mono">(${user.id})</span>
+                        </td>
                         <td class="py-3 font-bold text-blue-600">${user.score}</td>
                         <td class="py-3 text-gray-600">${user.setsCompleted}</td>
                         <td class="py-3 text-gray-600">${user.pokemons}</td>
