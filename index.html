@@ -141,12 +141,18 @@
 
     <div class="w-full max-w-2xl mx-auto">
         <header class="flex flex-wrap justify-between items-center mb-6 glass-panel p-4 gap-4">
-            <div class="flex items-center gap-3">
-                <h1 class="text-2xl font-bold text-blue-600">האתגר היומי</h1>
-                <div id="timer-display" class="hidden text-base font-bold bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full shadow-inner flex items-center gap-1">
-                    ⏱️ <span id="time-text">00:00</span>
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-3">
+                    <h1 class="text-2xl font-bold text-blue-600">האתגר היומי</h1>
+                    <div id="timer-display" class="hidden text-base font-bold bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full shadow-inner flex items-center gap-1">
+                        ⏱️ <span id="time-text">00:00</span>
+                    </div>
+                </div>
+                <div class="text-sm font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-full shadow-inner w-fit flex items-center gap-1 border border-gray-200">
+                    👤 <span id="player-name-display">...</span>
                 </div>
             </div>
+            
             <div class="text-lg font-bold bg-blue-100 text-blue-800 px-4 py-2 rounded-full shadow-inner flex flex-col items-center">
                 <span>⭐ <span id="score-display">0</span></span>
                 <span class="text-xs text-blue-600">נקודות</span>
@@ -178,9 +184,10 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+      
         const appId = 'pokemon-math-v3';
-        //const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const firebaseConfig = {
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                                   apiKey: "AIzaSyDCX6HeAMyGxSm9cm_8AR3rSl4bHabI7zo",
                                   authDomain: "pokemon-math-game-86791.firebaseapp.com",
                                   projectId: "pokemon-math-game-86791",
@@ -189,10 +196,17 @@
                                   appId: "1:168704678655:web:75d3ac91d0ea09461d8aca"
                                 };
         const initialAuthToken = null;
-
         let db, auth, userId;
         
+        let globalSettings = {
+            enableMultiplication: true,
+            enableLongMath: true,
+            enableTriangles: true,
+            enableFractions: true
+        };
+        
         let state = {
+            playerName: null,
             score: 0,
             pokemons: [],
             mistakes: {}, 
@@ -226,8 +240,19 @@
         const pokedexEmpty = document.getElementById('pokedex-empty');
         const pokemonCount = document.getElementById('pokemon-count');
         const syncIndicator = document.getElementById('cloud-sync-indicator');
+        const playerNameDisplay = document.getElementById('player-name-display');
 
         const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        // פונקציה לייצור שם אקראי
+        function generatePlayerName() {
+            const animals = ['אריה', 'נמר', 'פיל', 'קוף', 'דולפין', 'נשר', 'שועל', 'זאב', 'דובי', 'פנדה', 'צב', 'פינגווין', 'דרקון'];
+            const adjectives = ['אמיץ', 'חכם', 'מהיר', 'חזק', 'זריז', 'מגניב', 'גיבור', 'אלוף', 'מבריק', 'שמח', 'סקרן', 'שובב', 'נדיר'];
+            const animal = animals[Math.floor(Math.random() * animals.length)];
+            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const num = Math.floor(Math.random() * 90) + 10; // 10-99
+            return `${animal} ${adj}${num}`;
+        }
 
         async function initApp() {
             try {
@@ -236,6 +261,7 @@
                 if (localDataRaw) {
                     try { 
                         const d = JSON.parse(localDataRaw);
+                        state.playerName = d.playerName || null;
                         state.score = d.score || 0;
                         state.pokemons = d.pokemons || [];
                         state.mistakes = d.mistakes || {};
@@ -252,11 +278,25 @@
                     else await signInAnonymously(auth);
                     
                     userId = auth.currentUser.uid;
+                    
+                    // משיכת הגדרות המשחק מפאנל הניהול
+                    try {
+                        const configRef = doc(db, 'artifacts', appId, 'config', 'settings');
+                        const configSnap = await getDoc(configRef);
+                        if (configSnap.exists()) {
+                            globalSettings = { ...globalSettings, ...configSnap.data() };
+                        }
+                    } catch (e) {
+                        console.error("Failed to load global config, using defaults", e);
+                    }
+
+                    // משיכת נתוני השחקן
                     const docRef = doc(db, 'artifacts', appId, 'users', userId, 'gameData', 'save');
                     const snap = await getDoc(docRef);
                     if (snap.exists()) {
                         const cloudData = snap.data();
                         if ((cloudData.score || 0) >= state.score) {
+                            state.playerName = cloudData.playerName || state.playerName;
                             state.score = cloudData.score || 0;
                             state.pokemons = cloudData.pokemons || [];
                             state.mistakes = cloudData.mistakes || {};
@@ -271,6 +311,14 @@
             } catch (e) { 
                 console.error("Init or sync failed, using local logic", e); 
             }
+            
+            // יצירת שם אם אין
+            if (!state.playerName) {
+                state.playerName = generatePlayerName();
+                saveUserData();
+            }
+            
+            playerNameDisplay.innerText = state.playerName;
             updatePokedex();
             scoreDisplay.innerText = state.score;
             window.startRandomSet();
@@ -278,6 +326,7 @@
 
         async function saveUserData() {
             const dataToSave = {
+                playerName: state.playerName,
                 score: state.score,
                 pokemons: state.pokemons,
                 mistakes: state.mistakes,
@@ -290,7 +339,7 @@
                 syncIndicator.style.opacity = '1';
                 try {
                     const docRef = doc(db, 'artifacts', appId, 'users', userId, 'gameData', 'save');
-                    await setDoc(docRef, dataToSave);
+                    await setDoc(docRef, dataToSave, { merge: true });
                 } catch (e) { console.error("Error saving data to cloud", e); }
                 setTimeout(() => { syncIndicator.style.opacity = '0'; }, 1000);
             }
@@ -312,11 +361,19 @@
         }
 
         window.startRandomSet = function() {
-            const rand = randomInt(0, 3);
-            if (rand === 0) window.generateNewSet();
-            else if (rand === 1) window.generateLongMathSet();
-            else if (rand === 2) window.generateTriangleSet();
-            else window.generateFractionSet();
+            let availableSets = [];
+            if (globalSettings.enableMultiplication) availableSets.push(window.generateNewSet);
+            if (globalSettings.enableLongMath) availableSets.push(window.generateLongMathSet);
+            if (globalSettings.enableTriangles) availableSets.push(window.generateTriangleSet);
+            if (globalSettings.enableFractions) availableSets.push(window.generateFractionSet);
+
+            if (availableSets.length === 0) {
+                container.innerHTML = `<div class="text-center font-bold text-red-500 text-2xl">אין סטים פעילים כרגע! המתן שמנהל המערכת יפעיל אותם.</div>`;
+                return;
+            }
+
+            const randomFunc = availableSets[Math.floor(Math.random() * availableSets.length)];
+            randomFunc();
         }
 
         // ========================== פונקציות לשברים פשוטים ==========================
@@ -346,8 +403,7 @@
                     const fill = i < colored ? '#3b82f6' : 'transparent';
                     
                     if (total > 1) {
-                        // שימוש בפסיקים למניעת שגיאות שרשור מחרוזות בהיעדר רווחים
-                        svg += `<path d="M 75,75 L ${x1},${y1} A 70,70 0 ${largeArcFlag},1 ${x2},${y2} Z" fill="${fill}" stroke="#1f2937" stroke-width="2"/>`;
+                        svg += `<path d="M 75,75 L ${x1},${y1} A 70,70 0 ${largeArcFlag},1${x2},${y2} Z" fill="${fill}" stroke="#1f2937" stroke-width="2"/>`;
                     }
                 }
                 svg += `</svg>`;
