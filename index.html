@@ -184,10 +184,10 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-      
-        const appId = 'pokemon-math-v3';
+       const appId = 'pokemon-math-v3';
         const firebaseConfig = {
                                   apiKey: "AIzaSyDCX6HeAMyGxSm9cm_8AR3rSl4bHabI7zo",
+
                                   authDomain: "pokemon-math-game-86791.firebaseapp.com",
                                   projectId: "pokemon-math-game-86791",
                                   storageBucket: "pokemon-math-game-86791.firebasestorage.app",
@@ -195,6 +195,7 @@
                                   appId: "1:168704678655:web:75d3ac91d0ea09461d8aca"
                                 };
         const initialAuthToken = null;
+
         let db, auth, userId;
         
         let globalSettings = {
@@ -250,7 +251,7 @@
             const animal = animals[Math.floor(Math.random() * animals.length)];
             const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
             const num = Math.floor(Math.random() * 90) + 10; // 10-99
-            return `${animal} ${adj}${num}`;
+            return `${animal} ${adj} ${num}`;
         }
 
         async function initApp() {
@@ -347,16 +348,38 @@
         function getMistakePair() {
             const keys = Object.keys(state.mistakes);
             if(keys.length === 0) return null;
-            const validKeys = keys.filter(k => state.mistakes[k] > 0);
-            if(validKeys.length === 0) return null;
             
+            // פילטור רק למפתחות של כפל (שהם בתבנית של רק ספרות, למשל "3_4") כדי שנדע לייצר להם תרגיל כפל שוב
+            const multKeys = keys.filter(k => state.mistakes[k] > 0 && /^\d+_\d+$/.test(k));
+            
+            // ניקוי טעויות ישנות שתוקנו
             keys.forEach(k => { if(state.mistakes[k] <= 0) delete state.mistakes[k]; });
             saveUserData();
 
-            if(validKeys.length === 0) return null;
-            const chosen = validKeys[randomInt(0, validKeys.length - 1)];
+            if(multKeys.length === 0) return null;
+            const chosen = multKeys[randomInt(0, multKeys.length - 1)];
             const [a, b] = chosen.split('_').map(Number);
             return { a, b };
+        }
+        
+        // פונקציה מרכזית ומשופרת לרישום טעויות ומחיקתן לפי כל סוג מפתח
+        function handleQuestionResult(key, isCorrect) {
+            let finalKey = key;
+            // אם זה כפל בתבנית הישנה - נוודא שזה ממוין מהקטן לגדול כדי לאחד כפילויות של 3*4 ו-4*3
+            if (/^\d+_\d+$/.test(key)) {
+                const parts = key.split('_').map(Number).sort((a,b)=>a-b);
+                finalKey = `${parts[0]}_${parts[1]}`;
+            }
+
+            if (isCorrect) {
+                if (state.mistakes[finalKey]) {
+                    state.mistakes[finalKey]--;
+                    if (state.mistakes[finalKey] <= 0) delete state.mistakes[finalKey];
+                }
+            } else {
+                state.mistakes[finalKey] = Math.min((state.mistakes[finalKey] || 0) + 3, 5);
+            }
+            saveUserData();
         }
 
         window.startRandomSet = function() {
@@ -402,7 +425,7 @@
                     const fill = i < colored ? '#3b82f6' : 'transparent';
                     
                     if (total > 1) {
-                        svg += `<path d="M 75,75 L ${x1},${y1} A 70,70 0 ${largeArcFlag},1${x2},${y2} Z" fill="${fill}" stroke="#1f2937" stroke-width="2"/>`;
+                        svg += `<path d="M 75,75 L ${x1},${y1} A 70,70 0 ${largeArcFlag},1 ${x2},${y2} Z" fill="${fill}" stroke="#1f2937" stroke-width="2"/>`;
                     }
                 }
                 svg += `</svg>`;
@@ -414,7 +437,7 @@
             state.fractionSet = [];
             for(let i=0; i<5; i++) {
                 const total = randomInt(2, 10);
-                const colored = randomInt(1, total - 1); // לפחות 1, מקסימום אחד פחות מהכל
+                const colored = randomInt(1, total - 1); 
                 const shape = Math.random() > 0.5 ? 'rect' : 'circle';
                 
                 const correct = `${colored}/${total}`;
@@ -486,12 +509,14 @@
             const feedback = document.getElementById('feedback-msg');
             
             if (selected === correct) {
+                handleQuestionResult(`frac_${correct}`, true); // רישום הצלחה במטריקות
                 feedback.innerHTML = '<span class="text-green-500">תשובה מושלמת! 👏 (+2 נק\')</span>';
                 btn.className = 'bg-green-500 border-2 border-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition transform scale-105';
                 btn.innerHTML = btn.innerHTML.replace(/border-gray-800/g, 'border-white');
                 Array.from(grid.children).forEach(b => b.disabled = true);
                 setTimeout(() => { handleCorrectAnswer(); }, 1000);
             } else {
+                handleQuestionResult(`frac_${correct}`, false); // רישום טעות במטריקות
                 feedback.innerHTML = '<span class="text-red-500">טעות. נסה שבר אחר!</span>';
                 btn.className = 'bg-red-100 border-2 border-red-300 text-red-500 font-bold py-3 px-4 rounded-xl shadow-sm transition opacity-50';
                 btn.innerHTML = btn.innerHTML.replace(/border-gray-800/g, 'border-red-500');
@@ -548,7 +573,8 @@
                 }
             }
             
-            return { op: isAddition ? '+' : '-', n1, n2, s1, s2, steps, gridCols };
+            // הוספנו פה דגל של madeMistake כדי לדעת בסוף התרגיל אם הוא צלח אותו חלק או לא
+            return { op: isAddition ? '+' : '-', n1, n2, s1, s2, steps, gridCols, madeMistake: false };
         }
 
         window.generateLongMathSet = function() {
@@ -704,23 +730,8 @@
             render();
         };
 
-        function handleQuestionResult(corePair, isCorrect) {
-            const parts = corePair.split('_').map(Number).sort((a,b)=>a-b);
-            const key = `${parts[0]}_${parts[1]}`;
-
-            if (isCorrect) {
-                if (state.mistakes[key]) {
-                    state.mistakes[key]--;
-                    if (state.mistakes[key] <= 0) delete state.mistakes[key];
-                }
-            } else {
-                state.mistakes[key] = Math.min((state.mistakes[key] || 0) + 3, 5);
-            }
-            saveUserData();
-        }
-
         function handleCorrectAnswer() {
-            const pointsToGive = (state.phase === 'long_math' || state.phase === 'triangles') ? 2 : 1;
+            const pointsToGive = (state.phase === 'long_math' || state.phase === 'triangles' || state.phase === 'fractions') ? 2 : 1;
             state.score += pointsToGive;
             scoreDisplay.innerText = state.score;
             saveUserData();
@@ -1099,6 +1110,10 @@
         window.activateNextLongMathStep = function() {
             const q = state.longMathSet[state.currentIndex];
             if (state.laCurrentStepIndex >= q.steps.length) {
+                // אם סיים בלי טעויות בכלל בשאלה הזו
+                if (!q.madeMistake) {
+                    handleQuestionResult(`lm_${q.op}`, true);
+                }
                 document.getElementById('feedback-msg').innerHTML = '<span class="text-green-500">מעולה! עבודה יפה! 👏 (+2 נק\')</span>';
                 setTimeout(() => {
                     handleCorrectAnswer(); 
@@ -1139,6 +1154,11 @@
                     state.laCurrentStepIndex++;
                     window.activateNextLongMathStep();
                 } else {
+                    // רישום הטעות (נסמן דגל שלא ירשום שוב באותה שאלה אם טעה פעמיים)
+                    if (!q.madeMistake) {
+                        handleQuestionResult(`lm_${q.op}`, false);
+                        q.madeMistake = true;
+                    }
                     newEl.value = '';
                     newEl.classList.add('shake', 'bg-red-100', 'border-red-500');
                     setTimeout(() => {
@@ -1205,11 +1225,13 @@
             const feedback = document.getElementById('feedback-msg');
             
             if (selected === correct) {
+                handleQuestionResult(`tri_${correct}`, true);
                 feedback.innerHTML = '<span class="text-green-500">תשובה מושלמת! 👏 (+2 נק\')</span>';
                 btn.className = 'bg-green-500 border-2 border-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition transform scale-105';
                 Array.from(grid.children).forEach(b => b.disabled = true);
                 setTimeout(() => { handleCorrectAnswer(); }, 1000);
             } else {
+                handleQuestionResult(`tri_${correct}`, false);
                 feedback.innerHTML = '<span class="text-red-500">לא מדויק. נסה תשובה אחרת!</span>';
                 btn.className = 'bg-red-100 border-2 border-red-300 text-red-500 font-bold py-3 px-4 rounded-xl shadow-sm transition opacity-50';
                 btn.disabled = true;
