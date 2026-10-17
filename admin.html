@@ -6,6 +6,7 @@
     <title>פאנל ניהול - אתגר הפוקימונים</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="firebase-config.js"></script>
     <style>
         body { font-family: 'Rubik', sans-serif; background-color: #f3f4f6; }
         .glass-panel { background: white; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; }
@@ -120,21 +121,12 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collectionGroup, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // הגדרות Firebase
-      const appId = 'pokemon-math-v3';
-        const firebaseConfig = {
-                                  apiKey: "AIzaSyDCX6HeAMyGxSm9cm_8AR3rSl4bHabI7zo",
-                                  authDomain: "pokemon-math-game-86791.firebaseapp.com",
-                                  projectId: "pokemon-math-game-86791",
-                                  storageBucket: "pokemon-math-game-86791.firebasestorage.app",
-                                  messagingSenderId: "168704678655",
-                                  appId: "1:168704678655:web:75d3ac91d0ea09461d8aca"
-                                };
-        const initialAuthToken = null;
+        const appId = window.POKEMON_APP_ID || (typeof __app_id !== 'undefined' ? __app_id : 'pokemon-math-v3');
+        const firebaseConfig = window.FIREBASE_CONFIG_OBJ || (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db, auth;
         
-        // מבנה ההגדרות ברירת המחדל
         const defaultSettings = {
             enableMultiplication: true,
             enableLongMath: true,
@@ -151,7 +143,7 @@
 
         async function initAdmin() {
             if (!firebaseConfig) {
-                document.getElementById('status-indicator').innerHTML = '🔴 שגיאה: חסרות הגדרות Firebase';
+                document.getElementById('status-indicator').innerHTML = '🔴 שגיאה: חסרות הגדרות Firebase בקובץ config';
                 return;
             }
 
@@ -174,7 +166,6 @@
             }
         }
 
-        // טעינת הגדרות המשחק (מאזין בזמן אמת לשינויים)
         function loadSettings() {
             const configRef = doc(db, 'artifacts', appId, 'config', 'settings');
             
@@ -183,14 +174,12 @@
                 if (docSnap.exists()) {
                     currentSettings = { ...defaultSettings, ...docSnap.data() };
                 } else {
-                    // יצירת מסמך ראשוני אם לא קיים
                     setDoc(configRef, currentSettings);
                 }
                 renderToggles(currentSettings, configRef);
             });
         }
 
-        // רינדור מתגי ההפעלה/כיבוי
         function renderToggles(settings, configRef) {
             const container = document.getElementById('toggles-container');
             container.innerHTML = '';
@@ -210,20 +199,18 @@
                 
                 container.appendChild(div);
 
-                // האזנה לשינוי מצב המתג לעדכון ב-Firebase
                 document.getElementById(toggle.id).addEventListener('change', async (e) => {
                     settings[toggle.id] = e.target.checked;
                     try {
                         await setDoc(configRef, settings, { merge: true });
                     } catch (error) {
                         console.error("שגיאה בשמירת הגדרות", error);
-                        e.target.checked = !e.target.checked; // החזרת המצב אם נכשל
+                        e.target.checked = !e.target.checked; 
                     }
                 });
             });
         }
 
-        // טעינת נתוני השחקנים
         async function loadMetrics() {
             try {
                 const gameDataQuery = collectionGroup(db, 'gameData');
@@ -277,7 +264,7 @@
             const sortedMistakes = Object.entries(mistakes)
                 .filter(([_, count]) => count > 0)
                 .sort((a, b) => b[1] - a[1])
-                .slice(0, 15); // נציג עד 15 תוצאות כי יש עכשיו מגוון רחב יותר
+                .slice(0, 15); 
 
             if (sortedMistakes.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">אין עדיין מספיק נתוני טעויות 👏</td></tr>';
@@ -287,7 +274,6 @@
             sortedMistakes.forEach(([key, count]) => {
                 let exercise = '';
                 
-                // פענוח חכם של סוג הטעות להצגה ברורה בטבלה
                 if (key.startsWith('frac_')) {
                     exercise = 'שבר: <span dir="ltr" class="font-mono bg-gray-100 px-2 py-1 rounded">' + key.replace('frac_', '') + '</span>';
                 } else if (key.startsWith('tri_')) {
