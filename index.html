@@ -178,9 +178,17 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokemon-math-v3';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = 'pokemon-math-v3';
+        //const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const firebaseConfig = {
+                                  apiKey: "AIzaSyDCX6HeAMyGxSm9cm_8AR3rSl4bHabI7zo",
+                                  authDomain: "pokemon-math-game-86791.firebaseapp.com",
+                                  projectId: "pokemon-math-game-86791",
+                                  storageBucket: "pokemon-math-game-86791.firebasestorage.app",
+                                  messagingSenderId: "168704678655",
+                                  appId: "1:168704678655:web:75d3ac91d0ea09461d8aca"
+                                };
+        const initialAuthToken = null;
 
         let db, auth, userId;
         
