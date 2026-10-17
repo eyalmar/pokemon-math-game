@@ -45,6 +45,7 @@ const rarityLists = {
 
 // פונקציות עזר
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const getContainer = () => document.getElementById('app-container');
 
 function generatePlayerName() {
     const animals = ['אריה', 'נמר', 'פיל', 'קוף', 'דולפין', 'נשר', 'שועל', 'זאב', 'דובי', 'פנדה', 'צב', 'פינגווין', 'דרקון'];
@@ -52,7 +53,6 @@ function generatePlayerName() {
     return `${animals[Math.floor(Math.random() * animals.length)]} ${adjectives[Math.floor(Math.random() * adjectives.length)]}${Math.floor(Math.random() * 90) + 10}`;
 }
 
-// פונקציית האתחול החשובה - מקבלת פרמטר האם זה מצב בדיקות
 export async function initApp(isTestMode = false) {
     isTestEnvironment = isTestMode;
     const storageKey = isTestEnvironment ? 'pokemonMathTestSave' : 'pokemonMathSave';
@@ -113,7 +113,6 @@ export async function initApp(isTestMode = false) {
         console.error("Init or sync failed", e); 
     }
     
-    // קביעת שם המשתמש
     if (isTestEnvironment) {
         state.playerName = 'משתמש בדיקות 🛠️';
     } else if (!state.playerName) {
@@ -125,11 +124,10 @@ export async function initApp(isTestMode = false) {
     updatePokedex();
     document.getElementById('score-display').innerText = state.score;
     
-    // אם זה משתמש רגיל - הפעל סט אקראי מיד. אם זה טסטר - חכה לבחירה.
     if (!isTestEnvironment) {
         window.startRandomSet();
     } else {
-        document.getElementById('app-container').innerHTML = `<div class="text-center font-bold text-gray-500 text-xl">מוכן לבדיקות. בחר סט מהתפריט למעלה.</div>`;
+        getContainer().innerHTML = `<div class="text-center font-bold text-gray-500 text-xl">מוכן לבדיקות. בחר סט מהתפריט למעלה.</div>`;
     }
 }
 
@@ -158,8 +156,6 @@ async function saveUserData() {
     }
 }
 
-// =================== כל פונקציות הלוגיקה (מוצמדות ל-window כדי שיהיו זמינות מה-HTML) ===================
-
 window.resetTestUser = function() {
     if(confirm("לאפס את נתוני משתמש הבדיקות?")) {
         localStorage.removeItem('pokemonMathTestSave');
@@ -175,7 +171,7 @@ window.startRandomSet = function() {
     if (globalSettings.enableFractions) availableSets.push(window.generateFractionSet);
 
     if (availableSets.length === 0) {
-        document.getElementById('app-container').innerHTML = `<div class="text-center font-bold text-red-500 text-2xl">אין סטים פעילים כרגע! המתן שמנהל המערכת יפעיל אותם.</div>`;
+        getContainer().innerHTML = `<div class="text-center font-bold text-red-500 text-2xl">אין סטים פעילים כרגע! המתן שמנהל המערכת יפעיל אותם.</div>`;
         return;
     }
 
@@ -213,7 +209,8 @@ function getMistakePair() {
     return { a, b };
 }
 
-// ---------------- FRACTIONS ----------------
+// =================== סטים של שאלות ===================
+
 window.generateFractionSet = function() {
     state.fractionSet = [];
     for(let i=0; i<5; i++) {
@@ -224,7 +221,9 @@ window.generateFractionSet = function() {
         let options = new Set();
         options.add(correct);
         while(options.size < 4) {
-            options.add(`${randomInt(1, randomInt(2, 10) - 1)}/${randomInt(2, 10)}`);
+            let rTotal = randomInt(2, 10);
+            let rColored = randomInt(1, rTotal - 1);
+            options.add(`${rColored}/${rTotal}`);
         }
         state.fractionSet.push({ total, colored, shape, correct, options: Array.from(options).sort(() => 0.5 - Math.random()) });
     }
@@ -234,7 +233,6 @@ window.generateFractionSet = function() {
     render();
 }
 
-// ---------------- LONG MATH ----------------
 window.generateLongMathSet = function() {
     state.longMathSet = [generateLongMathProblem(), generateLongMathProblem()];
     state.phase = 'long_math';
@@ -248,8 +246,12 @@ function generateLongMathProblem() {
     const len1 = randomInt(3, 5);
     const len2 = randomInt(3, len1); 
     
-    let n1 = parseInt(Array.from({length: len1}, () => randomInt(1, 9)).join(''));
-    let n2 = parseInt(Array.from({length: len2}, () => randomInt(1, 9)).join(''));
+    let n1Str = ''; for(let i=0; i<len1; i++) n1Str += randomInt(1, 9).toString();
+    let n1 = parseInt(n1Str);
+    
+    let n2Str = ''; for(let i=0; i<len2; i++) n2Str += randomInt(1, 9).toString();
+    let n2 = parseInt(n2Str);
+
     if (!isAddition && n1 < n2) { let temp = n1; n1 = n2; n2 = temp; }
     
     let s1 = n1.toString().split('').reverse().map(Number);
@@ -280,7 +282,6 @@ function generateLongMathProblem() {
     return { op: isAddition ? '+' : '-', n1, n2, s1, s2, steps, gridCols, madeMistake: false };
 }
 
-// ---------------- MULTIPLICATION ----------------
 window.generateNewSet = function() {
     let mults = []; let usedAnswers = new Set(); let usedPairs = new Set(); 
     for(let i=0; i<2; i++) {
@@ -319,26 +320,36 @@ window.generateNewSet = function() {
     state.currentSet = mults; state.phase = 'study'; state.currentIndex = 0; render();
 };
 
-// ---------------- TRIANGLES ----------------
 const triangleTemplates = [
     { points: "100,46 40,150 160,150", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="96" y1="150" x2="104" y2="150" stroke="#ef4444" stroke-width="3"/><line x1="66" y1="94" x2="74" y2="102" stroke="#ef4444" stroke-width="3"/><line x1="126" y1="102" x2="134" y2="94" stroke="#ef4444" stroke-width="3"/>` },
     { points: "40,160 140,160 40,60", labels: ["ישר זווית", "שווה שוקיים"], marks: `<polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/><line x1="86" y1="156" x2="94" y2="164" stroke="#ef4444" stroke-width="3"/><line x1="36" y1="106" x2="44" y2="114" stroke="#ef4444" stroke-width="3"/>` },
     { points: "40,160 160,160 40,80", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="40,140 60,140 60,160" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
     { points: "20,130 180,130 100,100", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="57" y1="110" x2="63" y2="120" stroke="#ef4444" stroke-width="3"/><line x1="137" y1="120" x2="143" y2="110" stroke="#ef4444" stroke-width="3"/>` },
     { points: "20,130 170,130 140,90", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
-    { points: "40,150 160,150 100,30", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="65" y1="88" x2="75" y2="92" stroke="#ef4444" stroke-width="3"/><line x1="125" y1="92" x2="135" y2="88" stroke="#ef4444" stroke-width="3"/>` }
+    { points: "40,150 160,150 100,30", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="65" y1="88" x2="75" y2="92" stroke="#ef4444" stroke-width="3"/><line x1="125" y1="92" x2="135" y2="88" stroke="#ef4444" stroke-width="3"/>` },
+    { points: "40,150 160,150 90,50", labels: ["חד זווית", "שונה צלעות"], marks: `` },
+    { points: "20,50 180,50 100,80", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="57" y1="60" x2="63" y2="70" stroke="#ef4444" stroke-width="3"/><line x1="137" y1="70" x2="143" y2="60" stroke="#ef4444" stroke-width="3"/>` },
+    { points: "40,40 140,40 140,140", labels: ["ישר זווית", "שווה שוקיים"], marks: `<polyline points="120,40 120,60 140,60" fill="none" stroke="#3b82f6" stroke-width="2"/><line x1="86" y1="36" x2="94" y2="44" stroke="#ef4444" stroke-width="3"/><line x1="136" y1="86" x2="144" y2="94" stroke="#ef4444" stroke-width="3"/>` },
+    { points: "160,160 160,40 80,40", labels: ["ישר זווית", "שונה צלעות"], marks: `<polyline points="140,40 140,60 160,60" fill="none" stroke="#3b82f6" stroke-width="2"/>` },
+    { points: "130,20 130,170 90,140", labels: ["קהה זווית", "שונה צלעות"], marks: `` },
+    { points: "150,40 150,160 30,100", labels: ["חד זווית", "שווה שוקיים"], marks: `<line x1="88" y1="65" x2="92" y2="75" stroke="#ef4444" stroke-width="3"/><line x1="92" y1="125" x2="88" y2="135" stroke="#ef4444" stroke-width="3"/>` },
+    { points: "150,100 46,40 46,160", labels: ["חד זווית", "שווה צלעות"], marks: `<line x1="42" y1="100" x2="50" y2="100" stroke="#ef4444" stroke-width="3"/><line x1="96" y1="65" x2="100" y2="75" stroke="#ef4444" stroke-width="3"/><line x1="96" y1="135" x2="100" y2="125" stroke="#ef4444" stroke-width="3"/>` },
+    { points: "130,20 130,180 100,100", labels: ["קהה זווית", "שווה שוקיים"], marks: `<line x1="110" y1="58" x2="120" y2="62" stroke="#ef4444" stroke-width="3"/><line x1="110" y1="142" x2="120" y2="138" stroke="#ef4444" stroke-width="3"/>` }
 ];
+
 window.generateTriangleSet = function() {
     let shuffled = [...triangleTemplates].sort(() => 0.5 - Math.random());
     state.triangleStudySet = shuffled.slice(0, 3);
     state.triangleSet = shuffled.slice(3, 7);
     state.phase = 'study_triangles'; state.currentIndex = 0; render();
 };
+
 window.startTriangleQuiz = function() {
     state.phase = 'triangles'; state.currentIndex = 0; startTimer(); render();
 }
 
-// =================== UI AND RENDERING ===================
+// =================== זרימת המשחק וכלים ===================
+
 function startTimer() {
     state.elapsedSeconds = 0;
     document.getElementById('timer-display').classList.remove('hidden');
@@ -361,10 +372,83 @@ function handleCorrectAnswer() {
     setTimeout(() => { advanceToNextQuestion(); }, 1000);
 }
 
+function advanceToNextQuestion() {
+    state.currentIndex++;
+    if (state.phase === 'individual' && state.currentIndex >= state.individualQuestions.length) {
+        if (state.matchQuestions.length > 0) { state.phase = 'match'; render(); } else showSetComplete();
+    } 
+    else if (state.phase === 'long_math' && state.currentIndex >= state.longMathSet.length) showSetComplete();
+    else if (state.phase === 'triangles' && state.currentIndex >= state.triangleSet.length) showSetComplete();
+    else if (state.phase === 'fractions' && state.currentIndex >= state.fractionSet.length) showSetComplete();
+    else render();
+}
+
+function showSetComplete() {
+    if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+    document.getElementById('timer-display').classList.add('hidden');
+    
+    state.setsCompleted++;
+    saveUserData();
+    
+    let timeText = `${state.elapsedSeconds} שניות`;
+    if (state.elapsedSeconds >= 60) {
+        const m = Math.floor(state.elapsedSeconds/60); const s = state.elapsedSeconds%60;
+        timeText = `${m} דקות ו-${s} שניות`;
+    }
+    
+    let bonusHtml = '';
+    if (state.elapsedSeconds > 0 && state.elapsedSeconds <= 60) {
+        const bonus = 10;
+        state.score += bonus;
+        document.getElementById('score-display').innerText = state.score;
+        saveUserData();
+        bonusHtml = `<div class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg inline-block mb-4 font-bold border border-yellow-300">⚡ בונוס מהירות! +${bonus} נקודות</div>`;
+    }
+
+    getContainer().innerHTML = `
+        <div class="text-center bounce-in w-full max-w-sm mx-auto">
+            <h2 class="text-3xl font-bold text-green-500 mb-4">סיימת את הסט בהצלחה! 🎉</h2>
+            <p class="text-lg text-gray-700 mb-2">זמן ביצוע: <b>${timeText}</b></p>
+            ${bonusHtml}
+            <div id="next-action-area" class="mt-8 flex flex-col gap-3 items-center w-full">
+                <button onclick="window.claimSetReward()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full shadow-lg transform transition active:scale-95 text-2xl w-full animate-bounce">🎁 קבל פוקימון במתנה!</button>
+                ${state.setsCompleted % 3 === 0 
+                    ? `<button onclick="window.openShop()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-xl w-full">🛒 חנות פוקימונים פתוחה!</button>`
+                    : ``
+                }
+            </div>
+        </div>
+    `;
+}
+
+function updatePokedex() {
+    const pk = document.getElementById('pokedex'); if(!pk) return;
+    document.getElementById('pokemon-count').innerText = state.pokemons.length;
+    if(state.pokemons.length > 0) {
+        const emptyMsg = document.getElementById('pokedex-empty');
+        if(emptyMsg) emptyMsg.style.display = 'none';
+    }
+    
+    pk.innerHTML = '';
+    [...state.pokemons].reverse().forEach((pokemon, i) => {
+        const div = document.createElement('div');
+        const rarityClass = `rarity-${pokemon.rarity || 'common'}`;
+        div.className = `pokemon-card bounce-in text-center ${rarityClass}`;
+        div.style.animationDelay = `${(i%10) * 0.05}s`;
+        div.innerHTML = `
+            <img src="${pokemon.imgUrl}" alt="${pokemon.name}" class="w-20 h-20 object-contain mx-auto">
+            <span class="block text-xs font-bold mt-2 text-gray-700 uppercase" style="font-size: 10px;">${pokemon.name}</span>
+        `;
+        pk.appendChild(div);
+    });
+}
+
+// =================== פונקציית הניתוב (Router) ===================
+
 function render() {
-    const container = document.getElementById('app-container');
+    const container = getContainer();
     container.innerHTML = '';
-    // כאן אנו מבצעים הפניה לפונקציות הרינדור - נכניס אותן בצורה תמציתית שעובדת באותו אופן
+    
     if (state.phase === 'study') renderStudyPhase(container);
     else if (state.phase === 'study_triangles') renderStudyTriangles(container);
     else if (state.phase === 'individual') {
@@ -379,89 +463,722 @@ function render() {
     else if (state.phase === 'fractions') renderFractions(container);
 }
 
-// את כל פונקציות ה-render המפורטות (כמו ב-index המקורי) נכניס כאן. כדי לחסוך באורך - הקוד משחזר בדיוק את ההתנהגות מהגרסאות הקודמות
-// [להלן מימושי הרנדר המלאים]
+// =================== פונקציות הרינדור (UI) השונות ===================
 
 function renderStudyPhase(container) {
-    let html = `<div class="w-full text-center bounce-in"><h2 class="text-2xl font-bold text-blue-600 mb-2">שלב זכרון</h2><p class="text-gray-600 mb-6">הסתכל היטב על התרגילים הבאים!</p><div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-xl font-medium mx-auto max-w-md">`;
+    const wrap = document.createElement('div');
+    wrap.className = 'w-full text-center bounce-in';
+    let html = `
+        <h2 class="text-2xl font-bold text-blue-600 mb-2">שלב זכרון</h2>
+        <p class="text-gray-600 mb-6">הסתכל היטב על התרגילים הבאים, תכף מתחיל החידון עליהם!</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-xl font-medium text-gray-800 text-center mx-auto max-w-md">
+    `;
     state.currentSet.forEach((item, index) => {
-        html += `<div class="bg-blue-50 py-3 px-4 rounded-xl border border-blue-100" dir="ltr">${item.a} × ${item.b} = <span class="text-blue-700 font-bold">${item.ans}</span></div>`;
+        const isLastAndOdd = (index === state.currentSet.length - 1) && (state.currentSet.length % 2 !== 0);
+        const colSpan = isLastAndOdd ? 'md:col-span-2' : '';
+        html += `<div class="bg-blue-50 py-3 px-4 rounded-xl border border-blue-100 ${colSpan}" dir="ltr">${item.a} × ${item.b} = <span class="text-blue-700 font-bold">${item.ans}</span></div>`;
     });
-    html += `</div><button onclick="window.startQuestions()" class="bg-green-500 text-white font-bold py-3 px-8 rounded-full">אני מוכן! התחל</button></div>`;
-    container.innerHTML = html;
+    html += `</div>
+        <button onclick="window.startQuestions()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg w-full max-w-xs">
+            אני מוכן! התחל
+        </button>
+    `;
+    wrap.innerHTML = html;
+    container.appendChild(wrap);
 }
 
 window.startQuestions = function() { state.phase = 'individual'; state.currentIndex = 0; startTimer(); render(); }
 
 function renderChoiceQuestion(q, index, total, container) {
-    let html = `<div class="w-full text-center bounce-in" id="question-wrap"><div class="text-sm text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full inline-block">שאלה ${index + 1} מתוך ${total} (בחירה)</div><div class="text-4xl md:text-5xl font-bold mb-6 flex justify-center" dir="ltr">${q.displayEq} ?</div><div id="options-grid" class="grid grid-cols-5 gap-3 mb-6 w-full max-w-md mx-auto"></div><div id="feedback-msg" class="h-8 text-lg font-bold"></div></div>`;
-    container.innerHTML = html;
-    const grid = document.getElementById('options-grid');
-    let options = [q.correct, q.correct+1, q.correct-1, q.correct+2, q.correct-2, q.correct+10].filter(o=>o>0).slice(0,10);
-    while(options.length < 10) options.push(q.correct + randomInt(3,15));
-    [...new Set(options)].sort(()=>0.5-Math.random()).slice(0,10).forEach(opt => {
-        const btn = document.createElement('button'); btn.className = 'bg-white border-2 border-blue-200 hover:bg-blue-50 text-xl font-bold py-3 rounded-xl'; btn.innerText = opt;
-        btn.onclick = () => window.checkChoiceAnswer(opt, q.correct, btn, grid, q.corePair);
-        grid.appendChild(btn);
+    const wrap = document.createElement('div');
+    wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+    wrap.id = 'question-wrap';
+    
+    wrap.innerHTML = `
+        <div class="text-sm text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full">שאלה ${index + 1} מתוך ${total} (בחירה)</div>
+        <div class="text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 mb-6 w-full" dir="ltr">${q.displayEq} <span class="text-blue-600">?</span></div>
+    `;
+    
+    const optionsGrid = document.createElement('div');
+    optionsGrid.className = 'grid grid-cols-5 gap-3 mb-6 w-full max-w-md mx-auto';
+    
+    let options = new Set();
+    options.add(q.correct);
+    if (q.isDiv) {
+        [q.correct + 1, q.correct - 1, q.a, q.ans, q.correct + 2, q.correct - 2].forEach(m => { if(m>0) options.add(m) });
+    } else {
+        [q.correct+q.a, q.correct-q.a, q.correct+q.b, q.correct-q.b, (q.a+1)*q.b, q.a*(q.b+1), q.correct+10, q.correct-10, parseInt(`${q.correct}`.split('').reverse().join(''))].forEach(m => { if(m>0 && !isNaN(m)) options.add(m) });
+    }
+    while(options.size < 10) { let r = q.correct + randomInt(-15,15); if(r>0) options.add(r); }
+    const finalOptions = Array.from(options).slice(0, 10).sort(() => 0.5 - Math.random());
+    
+    finalOptions.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'bg-white border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 text-xl font-bold py-3 rounded-xl shadow-sm transition transform active:scale-95';
+        btn.innerText = opt;
+        btn.onclick = () => window.checkChoiceAnswer(opt, q.correct, btn, optionsGrid, q.corePair);
+        optionsGrid.appendChild(btn);
     });
+    
+    wrap.appendChild(optionsGrid);
+    wrap.insertAdjacentHTML('beforeend', '<div id="feedback-msg" class="h-8 text-lg font-bold w-full"></div>');
+    container.appendChild(wrap);
 }
+
 window.checkChoiceAnswer = function(selected, correct, btn, grid, corePair) {
+    const feedback = document.getElementById('feedback-msg');
     if (selected === correct) {
         handleQuestionResult(corePair, true);
-        btn.className = 'bg-green-500 text-white text-xl font-bold py-3 rounded-xl';
-        document.getElementById('feedback-msg').innerHTML = '<span class="text-green-500">כל הכבוד!</span>';
+        btn.className = 'bg-green-500 border-2 border-green-600 text-white text-xl font-bold py-3 rounded-xl shadow-md transition transform scale-105';
+        feedback.innerHTML = '<span class="text-green-500">כל הכבוד! אלוף! 👏 (+1 נק\')</span>';
+        Array.from(grid.children).forEach(b => b.disabled = true);
         handleCorrectAnswer();
     } else {
         handleQuestionResult(corePair, false);
-        btn.className = 'bg-red-100 text-red-500 text-xl font-bold py-3 rounded-xl opacity-50'; btn.disabled = true;
-        document.getElementById('feedback-msg').innerHTML = '<span class="text-red-500">טעות! נסה שוב</span>';
+        btn.className = 'bg-red-100 border-2 border-red-300 text-red-500 text-xl font-bold py-3 rounded-xl shadow-sm transition transform opacity-50';
+        btn.disabled = true;
+        feedback.innerHTML = '<span class="text-red-500">אופס, טעות. נסה אפשרות אחרת!</span>';
+        const wrap = document.getElementById('question-wrap');
+        wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
     }
 }
 
 function renderInputQuestion(q, index, total, container) {
-    container.innerHTML = `<div class="w-full text-center bounce-in flex flex-col items-center" id="question-wrap">
+    const wrap = document.createElement('div');
+    wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+    wrap.id = 'question-wrap';
+    
+    wrap.innerHTML = `
         <div class="text-sm text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full">שאלה ${index + 1} מתוך ${total} (הקלדה)</div>
         <div class="text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 mb-8 w-full" dir="ltr">
-            ${q.displayEq} <input type="number" id="answer-input" class="w-24 h-16 text-center border-4 border-blue-300 rounded-xl">
+            ${q.displayEq}
+            <input type="number" inputmode="numeric" id="answer-input" class="w-24 h-16 text-center border-4 border-blue-300 rounded-xl focus:border-blue-500 focus:outline-none shadow-inner text-4xl">
         </div>
-        <div id="feedback-msg" class="h-8 text-lg font-bold mb-4"></div>
-        <button onclick="window.checkInputAnswer('${q.correct}', '${q.corePair}')" class="bg-blue-500 text-white font-bold py-3 px-8 rounded-full">בדוק תשובה</button>
-    </div>`;
-}
-window.checkInputAnswer = function(correctStr, corePair) {
-    const val = parseInt(document.getElementById('answer-input').value);
-    if(val === parseInt(correctStr)) { handleQuestionResult(corePair, true); document.getElementById('feedback-msg').innerHTML = '<span class="text-green-500">כל הכבוד!</span>'; handleCorrectAnswer(); }
-    else { handleQuestionResult(corePair, false); document.getElementById('feedback-msg').innerHTML = '<span class="text-red-500">טעות!</span>'; }
-}
-
-// ... כנ"ל לשאר הפונקציות (LongMath, Triangles, Fractions) אותן תעתיק אחד-לאחד כמו בפרומפט הקודם שלי.
-// (למען קריאות התשובה כאן דילגתי על פונקציות הרינדור הארוכות של קנבס ומשולשים - יש להעתיק אותן ישירות לתוך קובץ זה)
-
-function advanceToNextQuestion() {
-    state.currentIndex++;
-    if (state.phase === 'individual' && state.currentIndex >= state.individualQuestions.length) {
-        if (state.matchQuestions.length > 0) { state.phase = 'match'; render(); } else showSetComplete();
-    } 
-    else if (state.phase === 'long_math' && state.currentIndex >= state.longMathSet.length) showSetComplete();
-    else if (state.phase === 'triangles' && state.currentIndex >= state.triangleSet.length) showSetComplete();
-    else if (state.phase === 'fractions' && state.currentIndex >= state.fractionSet.length) showSetComplete();
-    else render();
+        <div id="feedback-msg" class="h-8 text-lg font-bold mb-4 w-full"></div>
+        <button onclick="window.checkInputAnswer('${q.correct}', '${q.corePair}')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg w-full max-w-xs">בדוק תשובה</button>
+    `;
+    container.appendChild(wrap);
+    
+    const input = document.getElementById('answer-input');
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.checkInputAnswer(q.correct, q.corePair); });
+    setTimeout(() => input.focus(), 50);
 }
 
-function showSetComplete() {
-    if (state.timerInterval) clearInterval(state.timerInterval);
-    document.getElementById('timer-display').classList.add('hidden');
-    state.setsCompleted++; saveUserData();
-    document.getElementById('app-container').innerHTML = `
-        <div class="text-center bounce-in">
-            <h2 class="text-3xl font-bold text-green-500 mb-4">סיימת בהצלחה! 🎉</h2>
-            <button onclick="window.startRandomSet()" class="bg-blue-500 text-white font-bold py-4 px-8 rounded-full mt-4 w-full">המשך לסט הבא</button>
+window.checkInputAnswer = function(correctAnswerStr, corePair) {
+    const correctAnswer = parseInt(correctAnswerStr);
+    const feedback = document.getElementById('feedback-msg');
+    const input = document.getElementById('answer-input');
+    const wrap = document.getElementById('question-wrap');
+    const userValue = parseInt(input.value);
+
+    if (isNaN(userValue)) { feedback.innerHTML = '<span class="text-gray-500">הכנס מספר בבקשה</span>'; return; }
+
+    if (userValue === correctAnswer) {
+        handleQuestionResult(corePair, true);
+        feedback.innerHTML = '<span class="text-green-500">כל הכבוד! אלוף! 👏 (+1 נק\')</span>';
+        input.className = 'w-24 h-16 text-center border-4 border-green-500 bg-green-50 rounded-xl text-4xl text-green-700';
+        input.disabled = true;
+        handleCorrectAnswer();
+    } else {
+        handleQuestionResult(corePair, false);
+        feedback.innerHTML = '<span class="text-red-500">אופס, טעות. נסה שוב!</span>';
+        input.value = '';
+        input.className = 'w-24 h-16 text-center border-4 border-red-400 bg-red-50 rounded-xl text-4xl text-red-600 focus:outline-none';
+        wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
+        input.focus();
+    }
+}
+
+function renderStudyTriangles(container) {
+    const wrap = document.createElement('div');
+    wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+    let html = `
+        <h2 class="text-2xl font-bold text-blue-600 mb-2">שלב למידה - סוגי משולשים</h2>
+        <p class="text-gray-600 mb-6 font-medium">הסתכל על התכונות של 3 המשולשים, שים לב לזווית ולסימני הצלעות (אדום = שוות):</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl mx-auto mb-8">
+    `;
+    
+    state.triangleStudySet.forEach(q => {
+        html += `
+            <div class="bg-white p-4 rounded-xl shadow-sm border-2 border-blue-100 flex flex-col items-center">
+                <svg width="150" height="150" viewBox="0 0 200 200" class="mb-3 drop-shadow-sm">
+                    <polygon points="${q.points}" fill="#eff6ff" stroke="#3b82f6" stroke-width="4" stroke-linejoin="round"/>
+                    ${q.marks || ''}
+                </svg>
+                <div class="font-bold text-blue-800 text-lg">${q.labels[0]}</div>
+                <div class="font-bold text-blue-800 text-lg">${q.labels[1]}</div>
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        <button onclick="window.startTriangleQuiz()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg w-full max-w-xs">
+            הבנתי, בוא נתחיל!
+        </button>
+    `;
+    wrap.innerHTML = html;
+    container.appendChild(wrap);
+}
+
+function renderTriangles(container) {
+    const q = state.triangleSet[state.currentIndex];
+    const wrap = document.createElement('div');
+    wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+    wrap.id = 'question-wrap';
+    
+    const correctString = q.labels.join(" ו");
+    const allPossiblePairs = ["חד זווית ושווה צלעות", "חד זווית ושווה שוקיים", "חד זווית ושונה צלעות", "ישר זווית ושווה שוקיים", "ישר זווית ושונה צלעות", "קהה זווית ושווה שוקיים", "קהה זווית ושונה צלעות"];
+    
+    let options = new Set(); options.add(correctString);
+    while(options.size < 4) { options.add(allPossiblePairs[randomInt(0, allPossiblePairs.length - 1)]); }
+    const finalOptions = Array.from(options).sort(() => 0.5 - Math.random());
+    
+    wrap.innerHTML = `
+        <div class="text-sm text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full">שאלה ${state.currentIndex + 1} מתוך 4 (הנדסה - משולשים)</div>
+        <h3 class="text-xl font-bold mb-4 text-gray-700">בחר את התיאור הנכון ביותר למשולש:</h3>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border-2 border-gray-100 mb-6 w-full max-w-sm">
+            <svg width="200" height="200" viewBox="0 0 200 200" class="mx-auto drop-shadow-md">
+                <polygon points="${q.points}" fill="#eff6ff" stroke="#3b82f6" stroke-width="4" stroke-linejoin="round"/>
+                ${q.marks || ''}
+            </svg>
+        </div>
+    `;
+    
+    const optionsGrid = document.createElement('div');
+    optionsGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3 max-w-md mx-auto mb-6 w-full px-4 text-lg';
+    
+    finalOptions.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'bg-gray-50 border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-300 text-gray-800 font-bold py-3 px-4 rounded-xl shadow-sm transition transform active:scale-95';
+        btn.innerText = opt;
+        btn.onclick = () => window.checkTriangleAnswer(opt, correctString, btn, optionsGrid);
+        optionsGrid.appendChild(btn);
+    });
+    
+    wrap.appendChild(optionsGrid);
+    wrap.insertAdjacentHTML('beforeend', '<div id="feedback-msg" class="h-8 text-lg font-bold mb-4 w-full"></div>');
+    container.appendChild(wrap);
+}
+
+window.checkTriangleAnswer = function(selected, correct, btn, grid) {
+    const feedback = document.getElementById('feedback-msg');
+    if (selected === correct) {
+        handleQuestionResult(`tri_${correct}`, true);
+        feedback.innerHTML = '<span class="text-green-500">תשובה מושלמת! 👏 (+2 נק\')</span>';
+        btn.className = 'bg-green-500 border-2 border-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition transform scale-105';
+        Array.from(grid.children).forEach(b => b.disabled = true);
+        setTimeout(() => { handleCorrectAnswer(); }, 1000);
+    } else {
+        handleQuestionResult(`tri_${correct}`, false);
+        feedback.innerHTML = '<span class="text-red-500">לא מדויק. נסה תשובה אחרת!</span>';
+        btn.className = 'bg-red-100 border-2 border-red-300 text-red-500 font-bold py-3 px-4 rounded-xl shadow-sm transition opacity-50';
+        btn.disabled = true;
+        const wrap = document.getElementById('question-wrap');
+        wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
+    }
+}
+
+function renderLongMath(container) {
+    const q = state.longMathSet[state.currentIndex];
+    state.laCurrentStepIndex = 0; 
+    
+    const wrap = document.createElement('div');
+    wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+    wrap.id = 'question-wrap';
+    
+    let html = `
+        <div class="text-sm text-gray-500 mb-6 bg-gray-100 px-3 py-1 rounded-full">שאלה ${state.currentIndex + 1} מתוך ${state.longMathSet.length} (${q.op === '+' ? 'חיבור' : 'חיסור'} ארוך)</div>
+        <div class="mb-4 text-blue-700 font-bold">פתור מימין לשמאל (שים לב לשארית או להלוואה!)</div>
+    `;
+    
+    let gridHtml = `<div class="grid gap-1 md:gap-2 text-3xl font-bold font-mono bg-white p-6 rounded-2xl shadow-sm border-2 border-gray-100" style="grid-template-columns: auto repeat(${q.gridCols}, minmax(40px, 1fr)); direction: ltr; width: fit-content; margin: 0 auto;">`;
+    
+    gridHtml += `<div></div>`;
+    for(let c = q.gridCols - 1; c >= 0; c--) {
+        gridHtml += `<div class="flex justify-center h-10 items-end"><input id="carry-${c}" class="w-8 h-8 text-xl text-center font-bold text-red-500 border-b-2 border-red-200 bg-transparent opacity-0 transition-all duration-300 outline-none" disabled maxlength="1" inputmode="numeric"></div>`;
+    }
+    
+    gridHtml += `<div></div>`;
+    for(let c = q.gridCols - 1; c >= 0; c--) {
+        gridHtml += `<div class="text-center relative"><span id="n1-${c}">${q.s1[c] !== undefined ? q.s1[c] : ''}</span></div>`;
+    }
+    
+    gridHtml += `<div class="text-blue-500 flex items-center pr-4">${q.op}</div>`;
+    for(let c = q.gridCols - 1; c >= 0; c--) {
+        gridHtml += `<div class="text-center border-b-4 border-gray-800 pb-2">${q.s2[c] !== undefined ? q.s2[c] : ''}</div>`;
+    }
+    
+    gridHtml += `<div></div>`;
+    for(let c = q.gridCols - 1; c >= 0; c--) {
+        gridHtml += `<div class="flex justify-center pt-4"><input id="res-${c}" class="w-12 h-14 text-3xl text-center font-bold border-2 border-gray-300 rounded-lg bg-gray-50 opacity-0 transition-all duration-300 outline-none" disabled maxlength="1" inputmode="numeric"></div>`;
+    }
+    
+    gridHtml += `</div>`;
+    html += gridHtml;
+    html += `<div id="feedback-msg" class="h-8 text-lg font-bold mt-6 w-full"></div>`;
+    
+    wrap.innerHTML = html;
+    container.appendChild(wrap);
+    window.activateNextLongMathStep();
+}
+
+window.activateNextLongMathStep = function() {
+    const q = state.longMathSet[state.currentIndex];
+    if (state.laCurrentStepIndex >= q.steps.length) {
+        if (!q.madeMistake) handleQuestionResult(`lm_${q.op}`, true);
+        document.getElementById('feedback-msg').innerHTML = '<span class="text-green-500">מעולה! עבודה יפה! 👏 (+2 נק\')</span>';
+        setTimeout(() => { handleCorrectAnswer(); }, 1000);
+        return;
+    }
+    
+    const step = q.steps[state.laCurrentStepIndex];
+    const inputId = `${(step.type === 'carry' || step.type === 'borrow') ? 'carry' : 'res'}-${step.col}`;
+    const inputEl = document.getElementById(inputId);
+    
+    inputEl.classList.remove('opacity-0', 'bg-gray-50');
+    inputEl.classList.add('opacity-100', 'bg-blue-50', 'border-blue-400', 'shadow-md', 'scale-110');
+    inputEl.disabled = false;
+    
+    const newEl = inputEl.cloneNode(true);
+    inputEl.parentNode.replaceChild(newEl, inputEl);
+    newEl.focus();
+    
+    newEl.addEventListener('input', (e) => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val)) return;
+        
+        if (val === step.expected) {
+            newEl.disabled = true;
+            newEl.classList.remove('bg-blue-50', 'border-blue-400', 'shadow-md', 'scale-110');
+            if (step.type === 'carry' || step.type === 'borrow') {
+                newEl.classList.add('text-red-500'); 
+                if(step.type === 'borrow') {
+                    const n1El = document.getElementById(`n1-${step.col}`);
+                    if(n1El) n1El.classList.add('line-through', 'text-gray-400');
+                }
+            } else { newEl.classList.add('bg-green-50', 'border-green-500', 'text-green-700'); }
+            
+            state.laCurrentStepIndex++;
+            window.activateNextLongMathStep();
+        } else {
+            if (!q.madeMistake) { handleQuestionResult(`lm_${q.op}`, false); q.madeMistake = true; }
+            newEl.value = '';
+            newEl.classList.add('shake', 'bg-red-100', 'border-red-500');
+            setTimeout(() => { newEl.classList.remove('shake', 'bg-red-100', 'border-red-500'); newEl.focus(); }, 400);
+        }
+    });
+}
+
+function getFractionSvg(shape, colored, total) {
+    let svg = '';
+    if (shape === 'rect') {
+        svg += `<svg width="200" height="100" viewBox="0 0 200 100" class="mx-auto drop-shadow-md border-2 border-gray-800 rounded-sm">`;
+        const partWidth = 200 / total;
+        for (let i = 0; i < total; i++) {
+            const fill = i < colored ? '#3b82f6' : '#ffffff';
+            svg += `<rect x="${i * partWidth}" y="0" width="${partWidth}" height="100" fill="${fill}" stroke="#1f2937" stroke-width="2"/>`;
+        }
+        svg += `</svg>`;
+    } else {
+        svg += `<svg width="150" height="150" viewBox="0 0 150 150" class="mx-auto drop-shadow-md">`;
+        svg += `<circle cx="75" cy="75" r="70" fill="#ffffff" stroke="#1f2937" stroke-width="2"/>`;
+        for (let i = 0; i < total; i++) {
+            const startAngle = (i * 360) / total;
+            const endAngle = ((i + 1) * 360) / total;
+            const startRad = (startAngle - 90) * Math.PI / 180;
+            const endRad = (endAngle - 90) * Math.PI / 180;
+            const x1 = 75 + 70 * Math.cos(startRad);
+            const y1 = 75 + 70 * Math.sin(startRad);
+            const x2 = 75 + 70 * Math.cos(endRad);
+            const y2 = 75 + 70 * Math.sin(endRad);
+            const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+            const fill = i < colored ? '#3b82f6' : 'transparent';
+            if (total > 1) { svg += `<path d="M 75,75 L ${x1},${y1} A 70,70 0 ${largeArcFlag},1 ${x2},${y2} Z" fill="${fill}" stroke="#1f2937" stroke-width="2"/>`; }
+        }
+        svg += `</svg>`;
+    }
+    return svg;
+}
+
+function renderFractions(container) {
+    const q = state.fractionSet[state.currentIndex];
+    const wrap = document.createElement('div');
+    wrap.className = 'w-full text-center bounce-in flex flex-col items-center';
+    wrap.id = 'question-wrap';
+    
+    wrap.innerHTML = `
+        <div class="text-sm text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full">שאלה ${state.currentIndex + 1} מתוך 5 (שברים פשוטים)</div>
+        <h3 class="text-xl font-bold mb-4 text-gray-700">איזה שבר מתאר את החלק הצבוע?</h3>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border-2 border-gray-100 mb-6 w-full max-w-sm flex justify-center items-center">
+            ${getFractionSvg(q.shape, q.colored, q.total)}
+        </div>
+    `;
+    
+    const optionsGrid = document.createElement('div');
+    optionsGrid.className = 'grid grid-cols-2 md:grid-cols-4 gap-3 max-w-md mx-auto mb-6 w-full px-4 text-xl';
+    
+    q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'bg-gray-50 border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-300 text-gray-800 font-bold py-3 px-4 rounded-xl shadow-sm transition transform active:scale-95';
+        const [top, bottom] = opt.split('/');
+        btn.innerHTML = `<div class="flex flex-col items-center justify-center font-mono leading-none"><span>${top}</span><hr class="w-6 border-gray-800 my-1"><span>${bottom}</span></div>`;
+        btn.onclick = () => window.checkFractionAnswer(opt, q.correct, btn, optionsGrid);
+        optionsGrid.appendChild(btn);
+    });
+    
+    wrap.appendChild(optionsGrid);
+    wrap.insertAdjacentHTML('beforeend', '<div id="feedback-msg" class="h-8 text-lg font-bold mb-4 w-full"></div>');
+    container.appendChild(wrap);
+}
+
+window.checkFractionAnswer = function(selected, correct, btn, grid) {
+    const feedback = document.getElementById('feedback-msg');
+    if (selected === correct) {
+        handleQuestionResult(`frac_${correct}`, true); 
+        feedback.innerHTML = '<span class="text-green-500">תשובה מושלמת! 👏 (+2 נק\')</span>';
+        btn.className = 'bg-green-500 border-2 border-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition transform scale-105';
+        btn.innerHTML = btn.innerHTML.replace(/border-gray-800/g, 'border-white');
+        Array.from(grid.children).forEach(b => b.disabled = true);
+        setTimeout(() => { handleCorrectAnswer(); }, 1000);
+    } else {
+        handleQuestionResult(`frac_${correct}`, false); 
+        feedback.innerHTML = '<span class="text-red-500">טעות. נסה שבר אחר!</span>';
+        btn.className = 'bg-red-100 border-2 border-red-300 text-red-500 font-bold py-3 px-4 rounded-xl shadow-sm transition opacity-50';
+        btn.innerHTML = btn.innerHTML.replace(/border-gray-800/g, 'border-red-500');
+        btn.disabled = true;
+        const wrap = document.getElementById('question-wrap');
+        wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
+    }
+}
+
+function renderMatchGame(container) {
+    state.matchState = { selectedEq: null, selectedAns: null, completedPairs: [] };
+    const wrap = document.createElement('div');
+    wrap.className = 'w-full text-center bounce-in flex flex-col items-center relative';
+    wrap.style.minHeight = '300px';
+    
+    wrap.innerHTML = `
+        <div class="text-sm text-gray-500 mb-6 bg-gray-100 px-3 py-1 rounded-full relative z-20">שלב בונוס - מתיחת קווים</div>
+        <h3 class="text-xl font-bold mb-4 relative z-20 text-blue-700">לחץ על תרגיל ואז על התשובה שלו כדי למתוח קו!</h3>
+    `;
+
+    const gameArea = document.createElement('div');
+    gameArea.className = 'relative w-full flex justify-between px-4 md:px-16 mt-4';
+    gameArea.id = 'match-area';
+
+    const eqsDiv = document.createElement('div'); eqsDiv.className = 'flex flex-col gap-6 z-10 w-32';
+    const ansDiv = document.createElement('div'); ansDiv.className = 'flex flex-col gap-6 z-10 w-32';
+
+    const shuffledEqs = [...state.matchQuestions].sort(() => 0.5 - Math.random());
+    let answersData = state.matchQuestions.map(q => ({ id: 'ans_'+q.id, val: q.correct, originalQ: q }));
+    
+    if (state.matchQuestions.length <= 2) {
+        let fakeVal = state.matchQuestions[0].correct + randomInt(1, 3);
+        if (state.matchQuestions[1] && fakeVal === state.matchQuestions[1].correct) fakeVal += 2;
+        answersData.push({ id: 'ans_fake', val: fakeVal, originalQ: null });
+    }
+    answersData.sort(() => 0.5 - Math.random());
+
+    shuffledEqs.forEach((q) => {
+        const eqBtn = document.createElement('div');
+        eqBtn.className = 'match-item text-center'; eqBtn.dir = 'ltr';
+        eqBtn.innerText = q.isDiv ? `${q.ans} ÷ ${q.a}` : `${q.a} × ${q.b}`;
+        eqBtn.dataset.val = q.correct; eqBtn.dataset.type = 'eq'; eqBtn.dataset.core = q.corePair;
+        eqBtn.id = `eq-${q.id}`;
+        eqBtn.onclick = () => window.handleMatchClick(eqBtn);
+        eqsDiv.appendChild(eqBtn);
+    });
+
+    answersData.forEach((ans) => {
+        const ansBtn = document.createElement('div');
+        ansBtn.className = 'match-item text-center';
+        ansBtn.innerText = ans.val;
+        ansBtn.dataset.val = ans.val; ansBtn.dataset.type = 'ans';
+        ansBtn.id = ans.id;
+        ansBtn.onclick = () => window.handleMatchClick(ansBtn);
+        ansDiv.appendChild(ansBtn);
+    });
+
+    gameArea.appendChild(eqsDiv);
+    gameArea.appendChild(ansDiv);
+    gameArea.insertAdjacentHTML('beforeend', `<canvas id="match-canvas" class="absolute inset-0 z-0 pointer-events-none w-full h-full"></canvas>`);
+    
+    wrap.appendChild(gameArea);
+    wrap.insertAdjacentHTML('beforeend', '<div id="match-feedback" class="h-8 text-lg font-bold mt-6 z-20"></div>');
+    container.appendChild(wrap);
+    
+    setTimeout(resizeCanvas, 100);
+    window.addEventListener('resize', resizeCanvas);
+}
+
+function resizeCanvas() {
+    const area = document.getElementById('match-area');
+    const canvas = document.getElementById('match-canvas');
+    if (area && canvas) { canvas.width = area.offsetWidth; canvas.height = area.offsetHeight; drawLines(); }
+}
+
+window.handleMatchClick = function(element) {
+    if (element.classList.contains('solved')) return;
+    const type = element.dataset.type;
+    const stateRef = state.matchState;
+    
+    if (element.classList.contains('selected')) {
+        element.classList.remove('selected');
+        if (type === 'eq') stateRef.selectedEq = null; else stateRef.selectedAns = null;
+        return;
+    }
+
+    Array.from(element.parentElement.children).forEach(child => { if (!child.classList.contains('solved')) child.classList.remove('selected'); });
+    element.classList.add('selected');
+    if (type === 'eq') stateRef.selectedEq = element; else stateRef.selectedAns = element;
+    if (stateRef.selectedEq && stateRef.selectedAns) window.checkMatch();
+}
+
+window.checkMatch = function() {
+    const eq = state.matchState.selectedEq;
+    const ans = state.matchState.selectedAns;
+    const feedback = document.getElementById('match-feedback');
+    const corePair = eq.dataset.core;
+
+    if (eq.dataset.val === ans.dataset.val) {
+        handleQuestionResult(corePair, true);
+        eq.classList.remove('selected'); ans.classList.remove('selected');
+        eq.classList.add('solved'); ans.classList.add('solved');
+        state.matchState.completedPairs.push({ eq: eq.id, ans: ans.id });
+        drawLines();
+        feedback.innerHTML = '<span class="text-green-500">נכון מאוד! (+1 נק\')</span>';
+        state.matchState.selectedEq = null; state.matchState.selectedAns = null;
+
+        if (state.matchState.completedPairs.length === state.matchQuestions.length) {
+            feedback.innerHTML = '<span class="text-green-500">סיימת את כולם, אלוף! 👏</span>';
+            window.removeEventListener('resize', resizeCanvas);
+            setTimeout(() => {
+                state.score += state.matchQuestions.length; 
+                document.getElementById('score-display').innerText = state.score;
+                saveUserData();
+                showSetComplete();
+            }, 1500);
+        }
+    } else {
+        handleQuestionResult(corePair, false); 
+        feedback.innerHTML = '<span class="text-red-500">נסה שוב! תמתח קו אחר.</span>';
+        eq.classList.remove('selected'); ans.classList.remove('selected');
+        eq.classList.add('animate-pulse'); ans.classList.add('animate-pulse');
+        setTimeout(() => { eq.classList.remove('animate-pulse'); ans.classList.remove('animate-pulse'); }, 500);
+        state.matchState.selectedEq = null; state.matchState.selectedAns = null;
+    }
+}
+
+function drawLines() {
+    const canvas = document.getElementById('match-canvas');
+    const area = document.getElementById('match-area');
+    if (!canvas || !area) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const areaRect = area.getBoundingClientRect();
+
+    state.matchState.completedPairs.forEach(pair => {
+        const el1 = document.getElementById(pair.eq); const el2 = document.getElementById(pair.ans);
+        if (el1 && el2) {
+            const rect1 = el1.getBoundingClientRect(); const rect2 = el2.getBoundingClientRect();
+            const x1 = rect1.left - areaRect.left; const y1 = (rect1.top - areaRect.top) + (rect1.height / 2);
+            const x2 = rect2.right - areaRect.left; const y2 = (rect2.top - areaRect.top) + (rect2.height / 2);
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+            ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 4; ctx.stroke();
+        }
+    });
+}
+
+// =================== מערכת החנות והתגמולים ===================
+
+window.claimSetReward = function() {
+    const isRare = Math.random() > 0.8; 
+    const id = getRandomId(isRare ? 'rare' : 'common');
+    revealPokemonInteractive([id], 'reward');
+}
+
+window.openShop = function() {
+    state.phase = 'shop';
+    renderShop(getContainer());
+}
+
+function renderShop(container) {
+    container.innerHTML = `
+        <div class="text-center bounce-in w-full">
+            <h2 class="text-3xl font-bold text-purple-600 mb-2">חנות חבילות פוקימונים</h2>
+            <p class="text-gray-600 mb-6">יש לך כרגע <b>${state.score}</b> נקודות</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white border-2 border-gray-200 rounded-xl p-4 flex flex-col items-center shadow hover:shadow-md transition">
+                    <div class="text-4xl mb-2">🎒</div>
+                    <h3 class="font-bold text-lg">חבילה רגילה</h3>
+                    <p class="text-sm text-gray-500 mb-4">3 פוקימונים רגילים</p>
+                    <button onclick="window.buyPack(15, 'basic')" class="${state.score >= 15 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-2 px-6 rounded-full w-full">15 נק'</button>
+                </div>
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex flex-col items-center shadow hover:shadow-md transition">
+                    <div class="text-4xl mb-2">💼</div>
+                    <h3 class="font-bold text-lg text-blue-700">חבילה נדירה</h3>
+                    <p class="text-sm text-blue-600 mb-4">2 רגילים, 1 נדיר!</p>
+                    <button onclick="window.buyPack(30, 'super')" class="${state.score >= 30 ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-2 px-6 rounded-full w-full">30 נק'</button>
+                </div>
+                <div class="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 flex flex-col items-center shadow-lg transform hover:scale-105 transition relative">
+                    <div class="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">לוהט!</div>
+                    <div class="text-4xl mb-2">🎁</div>
+                    <h3 class="font-bold text-lg text-yellow-700">חבילת אגדות</h3>
+                    <p class="text-sm text-yellow-700 mb-4">1 רגיל, 1 נדיר, 1 אגדי!</p>
+                    <button onclick="window.buyPack(50, 'ultra')" class="${state.score >= 50 ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-2 px-6 rounded-full w-full">50 נק'</button>
+                </div>
+            </div>
+            
+            <button onclick="window.startRandomSet()" class="text-gray-500 hover:text-gray-800 font-medium underline">חזור והמשך באתגר</button>
         </div>
     `;
 }
 
-function updatePokedex() {
-    const pk = document.getElementById('pokedex'); if(!pk) return;
-    document.getElementById('pokemon-count').innerText = state.pokemons.length;
-    pk.innerHTML = state.pokemons.map(p => `<div class="pokemon-card bg-white p-2 border-2 border-gray-200 rounded text-center"><img src="${p.imgUrl}" class="w-16 h-16 mx-auto"><span class="text-xs font-bold">${p.name}</span></div>`).join('');
+window.buyPack = async function(cost, type) {
+    if(state.score < cost) return;
+    state.score -= cost;
+    document.getElementById('score-display').innerText = state.score;
+    saveUserData();
+
+    let idsToFetch = [];
+    if(type === 'basic') { idsToFetch = [getRandomId('common'), getRandomId('common'), getRandomId('common')]; } 
+    else if(type === 'super') { idsToFetch = [getRandomId('common'), getRandomId('common'), getRandomId('rare')]; } 
+    else if(type === 'ultra') { idsToFetch = [getRandomId('common'), getRandomId('rare'), getRandomId('legendary')]; }
+
+    revealPokemonInteractive(idsToFetch, 'pack', type);
+}
+
+function getRandomId(rarityStr) {
+    const arr = rarityLists[rarityStr];
+    return arr[randomInt(0, arr.length - 1)];
+}
+
+async function fetchPokemonData(id) {
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+    const data = await res.json();
+    const rarity = rarityLists.legendary.includes(id) ? 'legendary' : (rarityLists.rare.includes(id) ? 'rare' : 'common');
+    return { id: data.id, name: data.name.charAt(0).toUpperCase() + data.name.slice(1), imgUrl: data.sprites.other['official-artwork'].front_default || data.sprites.front_default, rarity: rarity };
+}
+
+function revealPokemonInteractive(idsToFetch, context, packType = 'basic') {
+    state.phase = 'reward';
+    let clicksNeeded = context === 'pack' ? 5 : 3;
+    let currentClicks = 0;
+    
+    let interactiveElementHtml = '';
+    if (context === 'pack') {
+        const packNames = { 'basic': 'רגילה', 'super': 'נדירה', 'ultra': 'אגדות' };
+        interactiveElementHtml = `<div id="interactive-item" class="booster-pack pack-${packType} my-4"><div class="pack-title">חבילה<br>${packNames[packType]}</div></div>`;
+    } else {
+        interactiveElementHtml = `<div id="interactive-item" class="cursor-pointer transition transform hover:scale-110 my-4" style="width: 150px; height: 150px;"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" class="w-full h-full object-contain drop-shadow-xl" alt="Pokeball"></div>`;
+    }
+
+    getContainer().innerHTML = `
+        <div class="text-center bounce-in flex flex-col items-center justify-center min-h-[300px]">
+            <h2 class="text-2xl font-bold text-gray-700 mb-2">${context === 'pack' ? 'קנית חבילה! לחץ עליה כדי לפתוח' : 'הנה הפרס שלך! לחץ כדי לתפוס אותו'}</h2>
+            ${interactiveElementHtml}
+            <div class="mt-4 w-48 h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                <div id="click-progress" class="h-full ${context === 'pack' ? 'bg-purple-500' : 'bg-red-500'} transition-all duration-300" style="width: 0%;"></div>
+            </div>
+            <p class="text-gray-400 text-sm mt-2 font-medium">לחץ עוד <span id="clicks-left">${clicksNeeded}</span> פעמים!</p>
+        </div>
+    `;
+
+    const item = document.getElementById('interactive-item');
+    const bar = document.getElementById('click-progress');
+    const clicksLeftSpan = document.getElementById('clicks-left');
+
+    item.onclick = () => {
+        currentClicks++;
+        item.classList.remove('shake-hard'); void item.offsetWidth; item.classList.add('shake-hard');
+        bar.style.width = `${(currentClicks / clicksNeeded) * 100}%`;
+        clicksLeftSpan.innerText = Math.max(0, clicksNeeded - currentClicks);
+
+        if(currentClicks >= clicksNeeded) {
+            item.onclick = null;
+            if (context === 'pack') {
+                item.classList.remove('shake-hard'); item.classList.add('rip-open'); 
+                setTimeout(() => showLoadingAndFetch(idsToFetch, context), 800);
+            } else { showLoadingAndFetch(idsToFetch, context); }
+        }
+    };
+}
+
+async function showLoadingAndFetch(idsToFetch, context) {
+    const container = getContainer();
+    container.innerHTML = `
+        <div class="text-center flex flex-col items-center justify-center min-h-[300px] bounce-in">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-4 ${context === 'pack' ? 'border-purple-500' : 'border-red-500'} mb-4"></div>
+            <h2 class="text-2xl font-bold text-gray-600">${context === 'pack' ? 'שולף קלפים...' : 'תופס...'}</h2>
+        </div>
+    `;
+    
+    try {
+        const pokemonsResults = await Promise.allSettled(idsToFetch.map(id => fetchPokemonData(id)));
+        const pokemons = pokemonsResults.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+        if (pokemons.length === 0) throw new Error("All fetches failed");
+
+        pokemons.forEach(p => state.pokemons.push(p));
+        saveUserData();
+        updatePokedex();
+
+        let gridHtml = `<div class="flex flex-wrap justify-center gap-6 mb-8 mt-6">`;
+        pokemons.forEach((p, index) => {
+            const borderColor = p.rarity === 'legendary' ? '#eab308' : (p.rarity === 'rare' ? '#3b82f6' : '#9ca3af');
+            const bgClass = p.rarity === 'legendary' ? 'bg-yellow-50' : (p.rarity === 'rare' ? 'bg-blue-50' : 'bg-white');
+            const title = p.rarity === 'legendary' ? '⭐ אגדי!' : (p.rarity === 'rare' ? '🌟 נדיר!' : '');
+            
+            if (context === 'pack') {
+                gridHtml += `
+                    <div class="tcg-card-container bounce-in" style="animation-delay: ${index * 0.2}s" onclick="this.classList.toggle('flipped')">
+                        <div class="tcg-card-inner">
+                            <div class="tcg-card-cover"></div>
+                            <div class="tcg-card-reveal ${bgClass}" style="border-color: ${borderColor}">
+                                ${title ? `<span class="text-xs font-bold mb-1">${title}</span>` : '<span class="text-xs font-bold mb-1 opacity-0">.</span>'}
+                                <img src="${p.imgUrl}" class="w-20 h-20 object-contain drop-shadow-md mb-2">
+                                <span class="font-bold text-gray-800 text-sm text-center">${p.name}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                gridHtml += `
+                    <div class="bounce-in flex flex-col items-center p-4 rounded-xl border-4 ${bgClass} shadow-lg" style="width: 160px; border-color: ${borderColor}">
+                        ${title ? `<span class="text-xs font-bold mb-2">${title}</span>` : ''}
+                        <img src="${p.imgUrl}" class="w-24 h-24 object-contain drop-shadow-md mb-2">
+                        <span class="font-bold text-gray-800">${p.name}</span>
+                    </div>
+                `;
+            }
+        });
+        gridHtml += `</div>`;
+
+        container.innerHTML = `
+            <div class="text-center bounce-in flex flex-col items-center">
+                <h2 class="text-3xl font-bold ${context === 'pack' ? 'text-purple-600' : 'text-green-600'} mb-2">
+                    ${context === 'pack' ? 'וואו! איזה קלפים!' : 'תתחדש! התווסף לאוסף.'}
+                </h2>
+                ${context === 'pack' ? '<p class="text-gray-500 mb-4 animate-pulse">לחץ על הקלפים כדי להפוך אותם</p>' : ''}
+                ${gridHtml}
+                <button id="reward-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-lg mt-4">
+                    המשך לאתגר הבא!
+                </button>
+            </div>
+        `;
+
+        if (context === 'pack') {
+            setTimeout(() => {
+                const cards = document.querySelectorAll('.tcg-card-container');
+                cards.forEach((card, i) => { setTimeout(() => card.classList.add('flipped'), 600 + (i * 300)); });
+            }, 100);
+        }
+
+        document.getElementById('reward-btn').onclick = () => { window.startRandomSet(); };
+    } catch (error) {
+        console.error("Error fetching pokemons:", error);
+        container.innerHTML = `<div class="text-center text-red-500 font-bold mb-4">הייתה בעיה קטנה באינטרנט. אל דאגה, הנקודות שלך נשמרו!</div>`;
+        setTimeout(() => { window.startRandomSet(); }, 3000);
+    }
 }
