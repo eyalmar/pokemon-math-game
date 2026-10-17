@@ -72,14 +72,14 @@
                 <!-- תרגילים קשים -->
                 <div class="glass-panel p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between">
-                        <span>התרגילים המאתגרים ביותר (כפל)</span>
+                        <span>הנושאים והתרגילים המאתגרים ביותר</span>
                         <span class="text-sm font-normal text-red-500 bg-red-50 px-2 py-1 rounded">דורש חזרה</span>
                     </h2>
                     <div class="overflow-x-auto">
                         <table class="w-full text-right border-collapse">
                             <thead>
                                 <tr class="text-gray-500 text-sm border-b">
-                                    <th class="pb-2 font-medium">תרגיל</th>
+                                    <th class="pb-2 font-medium">סוג / תרגיל</th>
                                     <th class="pb-2 font-medium">כמות טעויות מצטברת</th>
                                     <th class="pb-2 font-medium">רמת קושי</th>
                                 </tr>
@@ -121,7 +121,7 @@
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collectionGroup, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // הגדרות Firebase
-       const appId = 'pokemon-math-v3';
+      const appId = 'pokemon-math-v3';
         const firebaseConfig = {
                                   apiKey: "AIzaSyDCX6HeAMyGxSm9cm_8AR3rSl4bHabI7zo",
                                   authDomain: "pokemon-math-game-86791.firebaseapp.com",
@@ -277,7 +277,7 @@
             const sortedMistakes = Object.entries(mistakes)
                 .filter(([_, count]) => count > 0)
                 .sort((a, b) => b[1] - a[1])
-                .slice(0, 10); 
+                .slice(0, 15); // נציג עד 15 תוצאות כי יש עכשיו מגוון רחב יותר
 
             if (sortedMistakes.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">אין עדיין מספיק נתוני טעויות 👏</td></tr>';
@@ -285,8 +285,21 @@
             }
 
             sortedMistakes.forEach(([key, count]) => {
-                const parts = key.split('_');
-                const exercise = `${parts[0]} × ${parts[1]}`;
+                let exercise = '';
+                
+                // פענוח חכם של סוג הטעות להצגה ברורה בטבלה
+                if (key.startsWith('frac_')) {
+                    exercise = 'שבר: <span dir="ltr" class="font-mono bg-gray-100 px-2 py-1 rounded">' + key.replace('frac_', '') + '</span>';
+                } else if (key.startsWith('tri_')) {
+                    exercise = 'משולש: ' + key.replace('tri_', '');
+                } else if (key.startsWith('lm_')) {
+                    exercise = key.replace('lm_', '') === '+' ? 'חיבור ארוך' : 'חיסור ארוך';
+                } else if (/^\d+_\d+$/.test(key)) {
+                    const parts = key.split('_');
+                    exercise = `כפל: <span dir="ltr" class="font-mono bg-gray-100 px-2 py-1 rounded">${parts[0]} × ${parts[1]}</span>`;
+                } else {
+                    exercise = key; 
+                }
                 
                 let difficulty = '<span class="text-green-500">קלה</span>';
                 if (count > 10) difficulty = '<span class="text-red-500 font-bold">גבוהה מאוד</span>';
@@ -294,7 +307,7 @@
 
                 tbody.innerHTML += `
                     <tr class="border-b last:border-0 hover:bg-gray-50 transition">
-                        <td class="py-3 font-bold text-lg" dir="ltr">${exercise}</td>
+                        <td class="py-3 font-bold text-md">${exercise}</td>
                         <td class="py-3 text-gray-600">${count}</td>
                         <td class="py-3">${difficulty}</td>
                     </tr>
