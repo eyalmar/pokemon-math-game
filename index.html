@@ -6,6 +6,7 @@
     <title>אתגר החידון והפוקימונים</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="firebase-config.js"></script>
     <style>
         body {
             font-family: 'Rubik', sans-serif;
@@ -184,17 +185,9 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-       const appId = 'pokemon-math-v3';
-        const firebaseConfig = {
-                                  apiKey: "AIzaSyDCX6HeAMyGxSm9cm_8AR3rSl4bHabI7zo",
-
-                                  authDomain: "pokemon-math-game-86791.firebaseapp.com",
-                                  projectId: "pokemon-math-game-86791",
-                                  storageBucket: "pokemon-math-game-86791.firebasestorage.app",
-                                  messagingSenderId: "168704678655",
-                                  appId: "1:168704678655:web:75d3ac91d0ea09461d8aca"
-                                };
-        const initialAuthToken = null;
+        const appId = window.POKEMON_APP_ID || (typeof __app_id !== 'undefined' ? __app_id : 'pokemon-math-v3');
+        const firebaseConfig = window.FIREBASE_CONFIG_OBJ || (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let db, auth, userId;
         
@@ -244,13 +237,12 @@
 
         const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-        // פונקציה לייצור שם אקראי
         function generatePlayerName() {
             const animals = ['אריה', 'נמר', 'פיל', 'קוף', 'דולפין', 'נשר', 'שועל', 'זאב', 'דובי', 'פנדה', 'צב', 'פינגווין', 'דרקון'];
             const adjectives = ['אמיץ', 'חכם', 'מהיר', 'חזק', 'זריז', 'מגניב', 'גיבור', 'אלוף', 'מבריק', 'שמח', 'סקרן', 'שובב', 'נדיר'];
             const animal = animals[Math.floor(Math.random() * animals.length)];
             const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-            const num = Math.floor(Math.random() * 90) + 10; // 10-99
+            const num = Math.floor(Math.random() * 90) + 10;
             return `${animal} ${adj} ${num}`;
         }
 
@@ -279,7 +271,6 @@
                     
                     userId = auth.currentUser.uid;
                     
-                    // משיכת הגדרות המשחק מפאנל הניהול
                     try {
                         const configRef = doc(db, 'artifacts', appId, 'config', 'settings');
                         const configSnap = await getDoc(configRef);
@@ -290,7 +281,6 @@
                         console.error("Failed to load global config, using defaults", e);
                     }
 
-                    // משיכת נתוני השחקן
                     const docRef = doc(db, 'artifacts', appId, 'users', userId, 'gameData', 'save');
                     const snap = await getDoc(docRef);
                     if (snap.exists()) {
@@ -312,7 +302,6 @@
                 console.error("Init or sync failed, using local logic", e); 
             }
             
-            // יצירת שם אם אין
             if (!state.playerName) {
                 state.playerName = generatePlayerName();
                 saveUserData();
@@ -349,10 +338,8 @@
             const keys = Object.keys(state.mistakes);
             if(keys.length === 0) return null;
             
-            // פילטור רק למפתחות של כפל (שהם בתבנית של רק ספרות, למשל "3_4") כדי שנדע לייצר להם תרגיל כפל שוב
             const multKeys = keys.filter(k => state.mistakes[k] > 0 && /^\d+_\d+$/.test(k));
             
-            // ניקוי טעויות ישנות שתוקנו
             keys.forEach(k => { if(state.mistakes[k] <= 0) delete state.mistakes[k]; });
             saveUserData();
 
@@ -362,10 +349,8 @@
             return { a, b };
         }
         
-        // פונקציה מרכזית ומשופרת לרישום טעויות ומחיקתן לפי כל סוג מפתח
         function handleQuestionResult(key, isCorrect) {
             let finalKey = key;
-            // אם זה כפל בתבנית הישנה - נוודא שזה ממוין מהקטן לגדול כדי לאחד כפילויות של 3*4 ו-4*3
             if (/^\d+_\d+$/.test(key)) {
                 const parts = key.split('_').map(Number).sort((a,b)=>a-b);
                 finalKey = `${parts[0]}_${parts[1]}`;
@@ -398,7 +383,6 @@
             randomFunc();
         }
 
-        // ========================== פונקציות לשברים פשוטים ==========================
         function getFractionSvg(shape, colored, total) {
             let svg = '';
             if (shape === 'rect') {
@@ -509,14 +493,14 @@
             const feedback = document.getElementById('feedback-msg');
             
             if (selected === correct) {
-                handleQuestionResult(`frac_${correct}`, true); // רישום הצלחה במטריקות
+                handleQuestionResult(`frac_${correct}`, true); 
                 feedback.innerHTML = '<span class="text-green-500">תשובה מושלמת! 👏 (+2 נק\')</span>';
                 btn.className = 'bg-green-500 border-2 border-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition transform scale-105';
                 btn.innerHTML = btn.innerHTML.replace(/border-gray-800/g, 'border-white');
                 Array.from(grid.children).forEach(b => b.disabled = true);
                 setTimeout(() => { handleCorrectAnswer(); }, 1000);
             } else {
-                handleQuestionResult(`frac_${correct}`, false); // רישום טעות במטריקות
+                handleQuestionResult(`frac_${correct}`, false); 
                 feedback.innerHTML = '<span class="text-red-500">טעות. נסה שבר אחר!</span>';
                 btn.className = 'bg-red-100 border-2 border-red-300 text-red-500 font-bold py-3 px-4 rounded-xl shadow-sm transition opacity-50';
                 btn.innerHTML = btn.innerHTML.replace(/border-gray-800/g, 'border-red-500');
@@ -525,7 +509,6 @@
                 wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
             }
         }
-        // ==============================================================================
 
         function generateLongMathProblem() {
             const isAddition = Math.random() > 0.5;
@@ -573,7 +556,6 @@
                 }
             }
             
-            // הוספנו פה דגל של madeMistake כדי לדעת בסוף התרגיל אם הוא צלח אותו חלק או לא
             return { op: isAddition ? '+' : '-', n1, n2, s1, s2, steps, gridCols, madeMistake: false };
         }
 
@@ -1110,7 +1092,6 @@
         window.activateNextLongMathStep = function() {
             const q = state.longMathSet[state.currentIndex];
             if (state.laCurrentStepIndex >= q.steps.length) {
-                // אם סיים בלי טעויות בכלל בשאלה הזו
                 if (!q.madeMistake) {
                     handleQuestionResult(`lm_${q.op}`, true);
                 }
@@ -1154,7 +1135,6 @@
                     state.laCurrentStepIndex++;
                     window.activateNextLongMathStep();
                 } else {
-                    // רישום הטעות (נסמן דגל שלא ירשום שוב באותה שאלה אם טעה פעמיים)
                     if (!q.madeMistake) {
                         handleQuestionResult(`lm_${q.op}`, false);
                         q.madeMistake = true;
