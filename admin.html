@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פאנל ניהול - אתגר הפוקימונים</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Rubik', sans-serif; background-color: #f3f4f6; }
+        .glass-panel { background: white; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; }
+        .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
+        .toggle-checkbox { right: 0; z-index: 1; border-color: #e5e7eb; transition: all 0.3s; }
+        .toggle-label { width: 3rem; height: 1.5rem; background-color: #e5e7eb; transition: all 0.3s; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">פאנל ניהול ⚙️</h1>
+                <p class="text-gray-500 mt-1">ניהול האתגר היומי ומעקב אחר התקדמות תלמידים</p>
+            </div>
+            <div id="status-indicator" class="flex items-center gap-2 text-sm font-medium text-gray-500 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-200">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                </span>
+                מתחבר למסד הנתונים...
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- כרטיסיות נתונים כלליים -->
+            <div class="glass-panel p-6 flex flex-col justify-center items-center text-center">
+                <div class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">סה"כ שחקנים</div>
+                <div class="text-4xl font-bold text-blue-600" id="total-users">-</div>
+            </div>
+            <div class="glass-panel p-6 flex flex-col justify-center items-center text-center">
+                <div class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">סטים שהושלמו</div>
+                <div class="text-4xl font-bold text-green-500" id="total-sets">-</div>
+            </div>
+            <div class="glass-panel p-6 flex flex-col justify-center items-center text-center">
+                <div class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">ממוצע נקודות למשתמש</div>
+                <div class="text-4xl font-bold text-purple-500" id="avg-score">-</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- עמודה ימנית: הגדרות המשחק -->
+            <div class="lg:col-span-1 flex flex-col gap-6">
+                <div class="glass-panel p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">הגדרות סטים פעילים</h2>
+                    <p class="text-sm text-gray-500 mb-6">בחר אילו סוגי שאלות יוגרלו למשחקים. השינוי נשמר אוטומטית ויחול מיד על כל השחקנים.</p>
+                    
+                    <div class="flex flex-col gap-4" id="toggles-container">
+                        <!-- מתגים ייטענו דינמית -->
+                        <div class="animate-pulse flex space-x-4 space-x-reverse">
+                            <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div class="h-4 bg-gray-200 rounded w-1/4"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- עמודה שמאלית: טבלאות ומטריקות -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
+                
+                <!-- תרגילים קשים -->
+                <div class="glass-panel p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2 flex justify-between">
+                        <span>התרגילים המאתגרים ביותר (כפל)</span>
+                        <span class="text-sm font-normal text-red-500 bg-red-50 px-2 py-1 rounded">דורש חזרה</span>
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead>
+                                <tr class="text-gray-500 text-sm border-b">
+                                    <th class="pb-2 font-medium">תרגיל</th>
+                                    <th class="pb-2 font-medium">כמות טעויות מצטברת</th>
+                                    <th class="pb-2 font-medium">רמת קושי</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mistakes-table-body">
+                                <tr><td colspan="3" class="text-center py-4 text-gray-400">טוען נתונים...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- טבלת משתמשים -->
+                <div class="glass-panel p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">טבלת שחקנים</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead>
+                                <tr class="text-gray-500 text-sm border-b">
+                                    <th class="pb-2 font-medium">מזהה שחקן</th>
+                                    <th class="pb-2 font-medium">ניקוד מצטבר</th>
+                                    <th class="pb-2 font-medium">סטים שפתר</th>
+                                    <th class="pb-2 font-medium">פוקימונים באוסף</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <tr><td colspan="4" class="text-center py-4 text-gray-400">טוען נתונים...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collectionGroup, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // הגדרות Firebase
+        const appId = 'pokemon-math-v3';
+        const firebaseConfig = const firebaseConfig = {
+                        apiKey: "AIzaSyDCX6HeAMyGxSm9cm_8AR3rSl4bHabI7zo",
+                        authDomain: "pokemon-math-game-86791.firebaseapp.com",
+                        projectId: "pokemon-math-game-86791",
+                        storageBucket: "pokemon-math-game-86791.firebasestorage.app",
+                        messagingSenderId: "168704678655",
+                        appId: "1:168704678655:web:75d3ac91d0ea09461d8aca"
+                      };
+        const initialAuthToken =  null;
+
+        let db, auth;
+        
+        // מבנה ההגדרות ברירת המחדל
+        const defaultSettings = {
+            enableMultiplication: true,
+            enableLongMath: true,
+            enableTriangles: true,
+            enableFractions: true
+        };
+
+        const togglesDef = [
+            { id: 'enableMultiplication', label: 'כפל וחילוק' },
+            { id: 'enableLongMath', label: 'חיבור וחיסור ארוך' },
+            { id: 'enableTriangles', label: 'הנדסה - משולשים' },
+            { id: 'enableFractions', label: 'שברים פשוטים' }
+        ];
+
+        async function initAdmin() {
+            if (!firebaseConfig) {
+                document.getElementById('status-indicator').innerHTML = '🔴 שגיאה: חסרות הגדרות Firebase';
+                return;
+            }
+
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            try {
+                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                else await signInAnonymously(auth);
+
+                document.getElementById('status-indicator').innerHTML = '<span class="relative flex h-3 w-3"><span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span> מחובר ופעיל';
+                
+                loadSettings();
+                loadMetrics();
+
+            } catch (error) {
+                console.error("Auth Error:", error);
+                document.getElementById('status-indicator').innerHTML = '🔴 שגיאת התחברות';
+            }
+        }
+
+        // טעינת הגדרות המשחק (מאזין בזמן אמת לשינויים)
+        function loadSettings() {
+            const configRef = doc(db, 'artifacts', appId, 'config', 'settings');
+            
+            onSnapshot(configRef, (docSnap) => {
+                let currentSettings = { ...defaultSettings };
+                if (docSnap.exists()) {
+                    currentSettings = { ...defaultSettings, ...docSnap.data() };
+                } else {
+                    // יצירת מסמך ראשוני אם לא קיים
+                    setDoc(configRef, currentSettings);
+                }
+                renderToggles(currentSettings, configRef);
+            });
+        }
+
+        // רינדור מתגי ההפעלה/כיבוי
+        function renderToggles(settings, configRef) {
+            const container = document.getElementById('toggles-container');
+            container.innerHTML = '';
+
+            togglesDef.forEach(toggle => {
+                const isChecked = settings[toggle.id];
+                
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between';
+                div.innerHTML = `
+                    <span class="font-medium text-gray-700">${toggle.label}</span>
+                    <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="${toggle.id}" ${isChecked ? 'checked' : ''} class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label for="${toggle.id}" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                    </div>
+                `;
+                
+                container.appendChild(div);
+
+                // האזנה לשינוי מצב המתג לעדכון ב-Firebase
+                document.getElementById(toggle.id).addEventListener('change', async (e) => {
+                    settings[toggle.id] = e.target.checked;
+                    try {
+                        await setDoc(configRef, settings, { merge: true });
+                    } catch (error) {
+                        console.error("שגיאה בשמירת הגדרות", error);
+                        e.target.checked = !e.target.checked; // החזרת המצב אם נכשל
+                    }
+                });
+            });
+        }
+
+        // טעינת נתוני השחקנים
+        async function loadMetrics() {
+            try {
+                // שימוש ב-Collection Group Query כדי להביא את כל מסמכי השמירה של כל המשתמשים
+                // הערה: נדרש אינדקס ב-Firestore עבור שאילתה זו על 'gameData'
+                const gameDataQuery = collectionGroup(db, 'gameData');
+                const querySnapshot = await getDocs(gameDataQuery);
+                
+                let totalScore = 0;
+                let totalSets = 0;
+                let usersCount = 0;
+                let globalMistakes = {};
+                let usersList = [];
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    usersCount++;
+                    totalScore += (data.score || 0);
+                    totalSets += (data.setsCompleted || 0);
+                    
+                    // אגרגציה של טעויות
+                    if (data.mistakes) {
+                        Object.keys(data.mistakes).forEach(key => {
+                            globalMistakes[key] = (globalMistakes[key] || 0) + data.mistakes[key];
+                        });
+                    }
+
+                    usersList.push({
+                        id: doc.ref.parent.parent.id.substring(0, 8) + '...', // מזהה מקוצר
+                        score: data.score || 0,
+                        setsCompleted: data.setsCompleted || 0,
+                        pokemons: (data.pokemons || []).length
+                    });
+                });
+
+                // עדכון מדדים עליונים
+                document.getElementById('total-users').innerText = usersCount;
+                document.getElementById('total-sets').innerText = totalSets;
+                document.getElementById('avg-score').innerText = usersCount > 0 ? Math.round(totalScore / usersCount) : 0;
+
+                renderMistakes(globalMistakes);
+                renderUsersTable(usersList);
+
+            } catch (error) {
+                console.error("Error loading metrics:", error);
+                document.getElementById('users-table-body').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">שגיאה בטעינת נתונים (וודא שקיימת הרשאת קריאה ואינדקס Collection Group)</td></tr>`;
+                document.getElementById('mistakes-table-body').innerHTML = `<tr><td colspan="3" class="text-center py-4 text-red-500">שגיאה בטעינת נתונים</td></tr>`;
+            }
+        }
+
+        function renderMistakes(mistakes) {
+            const tbody = document.getElementById('mistakes-table-body');
+            tbody.innerHTML = '';
+
+            // המרה למערך ומיון לפי כמות הטעויות (מהגבוה לנמוך)
+            const sortedMistakes = Object.entries(mistakes)
+                .filter(([_, count]) => count > 0)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10); // הצגת 10 הטעויות הנפוצות ביותר
+
+            if (sortedMistakes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">אין עדיין מספיק נתוני טעויות 👏</td></tr>';
+                return;
+            }
+
+            sortedMistakes.forEach(([key, count]) => {
+                const parts = key.split('_');
+                const exercise = `${parts[0]} × ${parts[1]}`;
+                
+                let difficulty = '<span class="text-green-500">קלה</span>';
+                if (count > 10) difficulty = '<span class="text-red-500 font-bold">גבוהה מאוד</span>';
+                else if (count > 5) difficulty = '<span class="text-yellow-600 font-medium">בינונית</span>';
+
+                tbody.innerHTML += `
+                    <tr class="border-b last:border-0 hover:bg-gray-50 transition">
+                        <td class="py-3 font-bold text-lg" dir="ltr">${exercise}</td>
+                        <td class="py-3 text-gray-600">${count}</td>
+                        <td class="py-3">${difficulty}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderUsersTable(users) {
+            const tbody = document.getElementById('users-table-body');
+            tbody.innerHTML = '';
+
+            // מיון משתמשים לפי ניקוד
+            users.sort((a, b) => b.score - a.score);
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">אין עדיין שחקנים רשומים</td></tr>';
+                return;
+            }
+
+            users.forEach((user, index) => {
+                let badge = '';
+                if (index === 0) badge = '🥇 ';
+                if (index === 1) badge = '🥈 ';
+                if (index === 2) badge = '🥉 ';
+
+                tbody.innerHTML += `
+                    <tr class="border-b last:border-0 hover:bg-gray-50 transition">
+                        <td class="py-3 text-gray-600 font-mono text-sm">${badge}${user.id}</td>
+                        <td class="py-3 font-bold text-blue-600">${user.score}</td>
+                        <td class="py-3 text-gray-600">${user.setsCompleted}</td>
+                        <td class="py-3 text-gray-600">${user.pokemons}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        window.onload = initAdmin;
+    </script>
+</body>
+</html>
