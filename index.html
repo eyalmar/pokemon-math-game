@@ -7,19 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="firebase-config.js"></script>
-    <!-- כאן נכנסים הסטיילים הרגילים שלך כמו בפעם הקודמת (booster-pack, bounce-in וכו') -->
     <style>
-        body { font-family: 'Rubik', sans-serif; background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); min-height: 100vh; margin: 0; padding: 10px; }
+        body { font-family: 'Rubik', sans-serif; background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); min-height: 100vh; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .bounce-in { animation: bounceIn 0.6s both; }
-        @keyframes bounceIn { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
-                /* מתיחת קווים */
+        .bounce-in { animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+        @keyframes bounceIn { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        
+        /* התאמות מתיחת קווים */
         .match-item { background: white; border: 3px solid #e5e7eb; border-radius: 12px; padding: 15px 20px; font-size: 1.25rem; font-weight: bold; cursor: pointer; transition: all 0.2s; position: relative; z-index: 10; }
         .match-item:hover { border-color: #93c5fd; transform: scale(1.05); }
         .match-item.selected { border-color: #3b82f6; background: #eff6ff; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
         .match-item.solved { border-color: #22c55e; background: #f0fdf4; color: #15803d; cursor: default; pointer-events: none; opacity: 0.8; }
-        
-        /* פוקימונים ואנימציות חנות */
+
+        /* פוקימונים, אנימציות וחנות */
         .booster-pack { width: 160px; height: 240px; border-radius: 12px; position: relative; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: transform 0.2s; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; border: 4px solid rgba(255,255,255,0.5); z-index: 10; }
         .booster-pack:hover { transform: translateY(-10px) scale(1.05); }
         .booster-pack::after { content: ''; position: absolute; top: -100%; left: -100%; width: 300%; height: 300%; background: linear-gradient(45deg, transparent, rgba(255,255,255,0.4), transparent); transform: rotate(45deg); animation: shine 3s infinite; }
@@ -28,8 +28,10 @@
         .pack-super { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; }
         .pack-ultra { background: linear-gradient(135deg, #eab308, #b45309); color: white; }
         .pack-title { font-size: 24px; font-weight: bold; text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 2; }
+        
         .rip-open { animation: ripOpen 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         @keyframes ripOpen { 0% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); } 40% { transform: scale(1.2) rotate(15deg); filter: brightness(2); } 100% { transform: scale(0) rotate(-20deg); opacity: 0; filter: brightness(0); } }
+
         .tcg-card-container { perspective: 1000px; width: 140px; height: 196px; margin: 0 10px; cursor: pointer; }
         .tcg-card-inner { width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; position: relative; }
         .tcg-card-container.flipped .tcg-card-inner { transform: rotateY(180deg); }
@@ -37,24 +39,23 @@
         .tcg-card-cover { background: repeating-linear-gradient(45deg, #2563eb, #2563eb 10px, #1e40af 10px, #1e40af 20px); border: 8px solid #fcd34d; display: flex; align-items: center; justify-content: center; }
         .tcg-card-cover::after { content: '⭐'; font-size: 40px; }
         .tcg-card-reveal { background: white; transform: rotateY(180deg); display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid; padding: 10px; }
-        
-        /* כרטיסי פוקימון באוסף */
+
         .pokemon-card { background: white; border-radius: 12px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .pokemon-card:hover { transform: translateY(-5px); }
         .rarity-common { border-bottom: 4px solid #9ca3af; }
         .rarity-rare { border-bottom: 4px solid #3b82f6; background: #eff6ff; }
         .rarity-legendary { border-bottom: 4px solid #eab308; background: #fefce8; box-shadow: 0 0 15px rgba(234,179,8,0.3); }
+
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
-        
-        /* אנימציות נוספות */
+
         .shake { animation: shake 0.4s ease-in-out both; }
         .shake-hard { animation: shakeHard 0.2s ease-in-out infinite; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
         @keyframes shakeHard { 0%, 100% { transform: translateX(0) rotate(0deg); } 25% { transform: translateX(-15px) rotate(-10deg); } 75% { transform: translateX(15px) rotate(10deg); } }
     </style>
 </head>
-<body class="text-gray-800 flex flex-col items-center">
+<body class="text-gray-800">
 
     <div class="w-full max-w-2xl mx-auto">
         <header class="flex flex-wrap justify-between items-center mb-6 glass-panel p-4 gap-4">
@@ -63,7 +64,7 @@
                     <h1 class="text-2xl font-bold text-blue-600">האתגר היומי</h1>
                     <div id="timer-display" class="hidden text-base font-bold bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full shadow-inner flex items-center gap-1">⏱️ <span id="time-text">00:00</span></div>
                 </div>
-                <div class="text-sm font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1 border border-gray-200">
+                <div class="text-sm font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1 border border-gray-200 w-fit">
                     👤 <span id="player-name-display">...</span>
                 </div>
             </div>
@@ -83,12 +84,16 @@
         <section class="glass-panel p-6">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-gray-700">הפוקימונים שלי (<span id="pokemon-count">0</span>)</h2>
+                <div class="flex gap-2">
+                    <button onclick="window.openArena()" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-1 px-3 rounded-full shadow-sm">⚔️ זירת קרב</button>
+                    <button onclick="window.openShop(true)" class="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 text-sm font-bold py-1 px-3 rounded-full shadow-sm">🛒 חנות</button>
+                </div>
             </div>
+            <p id="pokedex-empty" class="text-center text-gray-500 text-sm mb-2">פתור עוד תרגילים כדי לתפוס פוקימונים!</p>
             <div id="pokedex" class="grid grid-cols-3 md:grid-cols-4 gap-4"></div>
         </section>
     </div>
 
-    <!-- הפעלת המשחק במצב רגיל (false) -->
     <script type="module">
         import { initApp } from './game-core.js';
         window.onload = () => { initApp(false); };
