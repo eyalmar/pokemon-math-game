@@ -2,10 +2,10 @@
 window.POKEMON_APP_ID = 'pokemon-math-v3';
 
 window.FIREBASE_CONFIG_OBJ = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+                apiKey: "AIzaSyDCX6HeAMyGxSm9cm_8AR3rSl4bHabI7zo",
+                authDomain: "pokemon-math-game-86791.firebaseapp.com",
+                projectId: "pokemon-math-game-86791",
+                storageBucket: "pokemon-math-game-86791.firebasestorage.app",
+                messagingSenderId: "168704678655",
+                appId: "1:168704678655:web:75d3ac91d0ea09461d8aca"
 };
