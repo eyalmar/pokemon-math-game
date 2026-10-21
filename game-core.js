@@ -235,20 +235,187 @@ window.declineInvite = async function(battleId) {
     await setDoc(battleRef, { status: 'declined' }, { merge: true });
 }
 
-window.startBattleSetup = function(battleId, role) {
+// =================== מערכת הקרבות (BATTLE SYSTEM) ===================
+
+let unsubBattle = null;
+
+// הפונקציה שמופעלת ברגע שיש אישור לקרב
+window.startBattleSetup = async function(battleId, role) {
     state.phase = 'battle_prep';
-    getContainer().innerHTML = `
-        <div class="text-center bounce-in w-full flex flex-col items-center justify-center min-h-[300px]">
-            <h2 class="text-5xl font-bold text-red-600 mb-6 drop-shadow-md">הקרב מתחיל! ⚔️</h2>
-            <div class="bg-gray-100 p-4 rounded-xl border-2 border-gray-200 mb-6 w-full max-w-sm">
-                <p class="text-gray-700 font-medium">המערכת מכינה את חדר הקרב...</p>
-                <p class="text-sm text-gray-400 mt-2 font-mono">${battleId}</p>
+    state.currentBattleId = battleId;
+    state.currentBattleRole = role; // 'host' או 'guest'
+    state.battleSelection = []; // הפוקימונים שהשחקן בחר
+
+    const battleRef = doc(db, 'artifacts', appId, 'battles', battleId);
+
+    // המארח (host) מאתחל את חדר הקרב במסד הנתונים
+    if (role === 'host') {
+        await setDoc(battleRef, {
+            status: 'selecting_team',
+            hostState: { ready: false, team: [], activeIndex: 0, hp: 0 },
+            guestState: { ready: false, team: [], activeIndex: 0, hp: 0 }
+        }, { merge: true });
+    }
+
+    // מאזינים לחדר הקרב בזמן אמת
+    if (unsubBattle) unsubBattle();
+    unsubBattle = onSnapshot(battleRef, (docSnap) => {
+        const data = docSnap.data();
+        if (!data) return;
+
+        // אם שני השחקנים מוכנים, עוברים לשלב הבחירת פעולה (התקפה/החלפה)
+        if (data.status === 'action_selection' && state.phase === 'battle_prep') {
+            state.phase = 'battle_active';
+            renderBattleActionSelection(data);
+        }
+        
+        // רינדור שלב בחירת הצוות
+        if (data.status === 'selecting_team' && state.phase === 'battle_prep') {
+            renderTeamSelection(data);
+        }
+    });
+}
+
+function renderTeamSelection(battleData) {
+    const container = getContainer();
+    const myState = state.currentBattleRole === 'host' ? battleData.hostState : battleData.guestState;
+    const opponentState = state.currentBattleRole === 'host' ? battleData.guestState : battleData.hostState;
+    
+    // אם הילד כבר לחץ "מוכן", נראה לו מסך המתנה ליריב
+    if (myState.ready) {
+        container.innerHTML = `
+            <div class="text-center bounce-in w-full min-h-[300px] flex flex-col justify-center items-center">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mb-6"></div>
+                <h2 class="text-3xl font-bold text-gray-700 mb-2">צוות מוכן!</h2>
+                <p class="text-xl text-gray-500">ממתין שהיריב יסיים לבחור...</p>
             </div>
-            <p class="text-gray-600 font-bold bg-yellow-100 px-4 py-2 rounded-lg">בשלב הבא נבנה את מסך בחירת 3 הפוקימונים!</p>
-            <button onclick="window.startRandomSet()" class="mt-8 text-blue-500 hover:text-blue-700 font-bold underline">חזור לאימון בינתיים</button>
+        `;
+        return;
+    }
+
+    // אם עדיין לא נבחרו פוקימונים - מציגים את האוסף לבחירה
+    let pokedexHtml = '';
+    if (state.pokemons.length === 0) {
+        pokedexHtml = `<p class="text-red-500 font-bold col-span-full">אין לך פוקימונים באוסף! תוכל לשחק עם פוקימון מתחיל אחד.</p>`;
+        // נותנים פוקימון התחלתי זמני אם אין כלום
+        state.battleSelection = [{ id: 25, name: 'Pikachu', imgUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }];
+    } else {
+        // מציגים את הפוקימונים של הילד לבחירה
+        [...state.pokemons].reverse().forEach((p, index) => {
+            const isSelected = state.battleSelection.some(sel => sel.id === p.id);
+            const rarityClass = `rarity-${p.rarity || 'common'}`;
+            const borderClass = isSelected ? 'border-4 border-green-500 bg-green-50 scale-105' : 'border-2 border-gray-200 bg-white hover:bg-gray-50';
+            
+            pokedexHtml += `
+                <div onclick="window.togglePokemonSelection(${index})" class="cursor-pointer transition-all duration-200 rounded-xl p-2 text-center shadow-sm ${borderClass} ${rarityClass}">
+                    ${isSelected ? '<div class="absolute top-1 right-1 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs">V</div>' : ''}
+                    <img src="${p.imgUrl}" class="w-16 h-16 mx-auto object-contain">
+                    <span class="block text-xs font-bold mt-1 uppercase truncate" style="font-size: 10px;">${p.name}</span>
+                </div>
+            `;
+        });
+    }
+
+    const maxAllowed = Math.min(3, Math.max(1, state.pokemons.length));
+
+    container.innerHTML = `
+        <div class="w-full text-center bounce-in">
+            <h2 class="text-2xl font-bold text-red-600 mb-2">בחר את הצוות שלך! ⚔️</h2>
+            <p class="text-gray-600 mb-4 font-medium">בחר עד ${maxAllowed} פוקימונים שייכנסו איתך לזירה</p>
+            
+            <div class="bg-gray-100 p-4 rounded-2xl mb-6 shadow-inner max-h-[300px] overflow-y-auto">
+                <div class="grid grid-cols-3 md:grid-cols-4 gap-3 relative">
+                    ${pokedexHtml}
+                </div>
+            </div>
+            
+            <div class="flex flex-col items-center gap-3">
+                <div class="text-sm font-bold text-gray-500">נבחרו: <span class="${state.battleSelection.length === maxAllowed ? 'text-green-600' : 'text-blue-600'}">${state.battleSelection.length} / ${maxAllowed}</span></div>
+                <button onclick="window.confirmTeam()" id="confirm-team-btn" class="${state.battleSelection.length > 0 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed'} text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 text-xl w-full max-w-xs" ${state.battleSelection.length === 0 ? 'disabled' : ''}>
+                    מוכן לקרב!
+                </button>
+            </div>
         </div>
     `;
 }
+
+window.togglePokemonSelection = function(index) {
+    const p = [...state.pokemons].reverse()[index];
+    const maxAllowed = Math.min(3, Math.max(1, state.pokemons.length));
+    
+    const existingIndex = state.battleSelection.findIndex(sel => sel.id === p.id);
+    
+    if (existingIndex >= 0) {
+        // הסרה מהצוות
+        state.battleSelection.splice(existingIndex, 1);
+    } else {
+        // הוספה לצוות (אם לא עברנו את המקסימום)
+        if (state.battleSelection.length < maxAllowed) {
+            state.battleSelection.push(p);
+        } else {
+            // רטט קל לחיווי שלא ניתן לבחור יותר מ-3
+            const btn = document.getElementById('confirm-team-btn');
+            btn.classList.add('shake');
+            setTimeout(() => btn.classList.remove('shake'), 400);
+            return;
+        }
+    }
+    
+    // מרנדר מחדש את המסך כדי להראות את הבחירה
+    const docRef = doc(db, 'artifacts', appId, 'battles', state.currentBattleId);
+    getDoc(docRef).then(snap => renderTeamSelection(snap.data()));
+}
+
+window.confirmTeam = async function() {
+    if (state.battleSelection.length === 0) return;
+    
+    // מכינים את הצוות עם 2 חיים (HP) לכל פוקימון
+    const teamWithHP = state.battleSelection.map(p => ({
+        ...p,
+        hp: 2,
+        maxHp: 2
+    }));
+
+    const battleRef = doc(db, 'artifacts', appId, 'battles', state.currentBattleId);
+    
+    // קריאת המצב הנוכחי בשרת
+    const snap = await getDoc(battleRef);
+    const data = snap.data();
+    
+    // בדיקה האם היריב כבר לחץ "מוכן"
+    const opponentState = state.currentBattleRole === 'host' ? data.guestState : data.hostState;
+    const opponentReady = opponentState && opponentState.ready;
+    
+    const updatePayload = {};
+    const myStateKey = state.currentBattleRole === 'host' ? 'hostState' : 'guestState';
+    
+    // התיקון: בניית האובייקט בצורה מקוננת במקום להשתמש בנקודה במחרוזת
+    updatePayload[myStateKey] = {
+        ...data[myStateKey], // שומרים על שאר הנתונים אם יש
+        team: teamWithHP,
+        ready: true,
+        activeIndex: 0
+    };
+
+    // אם היריב כבר מוכן, מעבירים את הסטטוס הכללי של החדר לשלב הבא
+    if (opponentReady) {
+        updatePayload.status = 'action_selection';
+    }
+
+    await setDoc(battleRef, updatePayload, { merge: true });
+}
+
+function renderBattleActionSelection(battleData) {
+    // כאן יגיע הקוד של השלב הבא!
+    const container = getContainer();
+    container.innerHTML = `
+        <div class="text-center bounce-in w-full">
+            <h2 class="text-4xl font-bold text-red-600 mb-4">הקרב מתחיל!</h2>
+            <p class="text-xl text-gray-700">שני הצוותים מוכנים. מכין זירה...</p>
+        </div>
+    `;
+}
+
 
 // =================== אתחול האפליקציה ===================
 
