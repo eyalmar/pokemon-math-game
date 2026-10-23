@@ -94,7 +94,7 @@
             <div id="pokedex" class="grid grid-cols-3 md:grid-cols-4 gap-4"></div>
         </section>
     </div>
-    <!-- Info Modal -->
+<!-- Info Modal -->
 <div id="info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[100] flex justify-center items-center p-4 backdrop-blur-sm transition-opacity">
     <div class="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl relative border-t-8 border-blue-500 max-h-[90vh] overflow-y-auto">
         <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="absolute top-4 left-4 text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition">✕</button>
@@ -127,6 +127,7 @@
         </p>
     </div>
 </div>
+    <!-- הפעלת המשחק במצב רגיל (false) -->
     <script type="module">
         import { initApp } from './game-core.js';
         window.onload = () => { initApp(false); };
