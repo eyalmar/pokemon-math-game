@@ -397,13 +397,29 @@ function renderTeamSelection(battleData) {
         pokedexHtml = `<p class="text-red-500 font-bold col-span-full">אין לך פוקימונים באוסף! הנה פיקאצ'ו במתנה.</p>`;
         state.battleSelection = [{ id: 25, name: 'Pikachu', imgUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }];
     } else {
-        [...state.pokemons].reverse().forEach((p, index) => {
+        // קיבוץ ומיון - בדיוק כמו בפוקידקס
+        const groupedPokemons = {};
+        state.pokemons.forEach(p => {
+            if (!groupedPokemons[p.id]) groupedPokemons[p.id] = { count: 0, data: p };
+            groupedPokemons[p.id].count++;
+        });
+
+        const sortedUniquePokemons = Object.values(groupedPokemons).sort((a, b) => a.data.name.localeCompare(b.data.name));
+
+        sortedUniquePokemons.forEach((item) => {
+            const p = item.data;
+            const count = item.count;
             const isSelected = state.battleSelection.some(sel => sel.id === p.id);
             const borderClass = isSelected ? 'border-4 border-green-500 bg-green-50 scale-105' : 'border-2 border-gray-200 bg-white hover:bg-gray-50';
+            
+            const badgeHtml = count > 1 ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold border-2 border-white shadow-md z-10">x${count}</div>` : '';
+            const stackStyle = count > 1 ? 'box-shadow: 3px 3px 0px -1px rgba(0,0,0,0.1), 6px 6px 0px -2px rgba(0,0,0,0.05);' : '';
+
             pokedexHtml += `
-                <div onclick="window.togglePokemonSelection(${index})" class="cursor-pointer transition-all duration-200 rounded-xl p-2 text-center shadow-sm ${borderClass} rarity-${p.rarity || 'common'}">
-                    ${isSelected ? '<div class="absolute top-1 right-1 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs">V</div>' : ''}
-                    <img src="${p.imgUrl}" class="w-16 h-16 mx-auto object-contain">
+                <div onclick="window.togglePokemonSelection(${p.id})" class="cursor-pointer transition-all duration-200 rounded-xl p-2 text-center shadow-sm ${borderClass} rarity-${p.rarity || 'common'} relative" style="${stackStyle}">
+                    ${isSelected ? '<div class="absolute top-1 left-1 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs z-20">V</div>' : ''}
+                    ${badgeHtml}
+                    <img src="${p.imgUrl}" class="w-16 h-16 mx-auto object-contain relative z-0">
                     <span class="block text-xs font-bold mt-1 uppercase truncate" style="font-size: 10px;">${p.name}</span>
                 </div>
             `;
@@ -416,7 +432,7 @@ function renderTeamSelection(battleData) {
             <h2 class="text-2xl font-bold text-red-600 mb-2">בחר את הצוות שלך! ⚔️</h2>
             <p class="text-gray-600 mb-4 font-medium">בחר עד ${maxAllowed} פוקימונים שייכנסו איתך לזירה</p>
             <div class="bg-gray-100 p-4 rounded-2xl mb-6 shadow-inner max-h-[300px] overflow-y-auto">
-                <div class="grid grid-cols-3 md:grid-cols-4 gap-3 relative">${pokedexHtml}</div>
+                <div class="grid grid-cols-3 md:grid-cols-4 gap-3 relative pt-2 pr-2">${pokedexHtml}</div>
             </div>
             <div class="flex flex-col items-center gap-3">
                 <div class="text-sm font-bold text-gray-500">נבחרו: <span class="${state.battleSelection.length === maxAllowed ? 'text-green-600' : 'text-blue-600'}">${state.battleSelection.length} / ${maxAllowed}</span></div>
@@ -424,6 +440,27 @@ function renderTeamSelection(battleData) {
             </div>
         </div>
     `;
+}
+
+window.togglePokemonSelection = function(id) {
+    const maxAllowed = Math.min(3, Math.max(1, state.pokemons.length));
+    const existingIndex = state.battleSelection.findIndex(sel => sel.id === id);
+    
+    if (existingIndex >= 0) {
+        // הסרה מהצוות אם כבר נבחר
+        state.battleSelection.splice(existingIndex, 1);
+    } else {
+        // הוספה לצוות אם יש מקום
+        if (state.battleSelection.length < maxAllowed) {
+            const pokemonToAdd = state.pokemons.find(p => p.id === id);
+            if (pokemonToAdd) state.battleSelection.push(pokemonToAdd);
+        } else {
+            const btn = document.getElementById('confirm-team-btn');
+            btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 400); return;
+        }
+    }
+    
+    getDoc(doc(db, 'artifacts', appId, 'battles', state.currentBattleId)).then(snap => renderTeamSelection(snap.data()));
 }
 
 window.togglePokemonSelection = function(index) {
