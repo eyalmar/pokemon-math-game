@@ -463,19 +463,6 @@ window.togglePokemonSelection = function(id) {
     getDoc(doc(db, 'artifacts', appId, 'battles', state.currentBattleId)).then(snap => renderTeamSelection(snap.data()));
 }
 
-window.togglePokemonSelection = function(index) {
-    const p = [...state.pokemons].reverse()[index];
-    const maxAllowed = Math.min(3, Math.max(1, state.pokemons.length));
-    const existingIndex = state.battleSelection.findIndex(sel => sel.id === p.id);
-    
-    if (existingIndex >= 0) state.battleSelection.splice(existingIndex, 1);
-    else if (state.battleSelection.length < maxAllowed) state.battleSelection.push(p);
-    else {
-        const btn = document.getElementById('confirm-team-btn');
-        btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 400); return;
-    }
-    getDoc(doc(db, 'artifacts', appId, 'battles', state.currentBattleId)).then(snap => renderTeamSelection(snap.data()));
-}
 
 window.confirmTeam = async function() {
     if (state.battleSelection.length === 0) return;
