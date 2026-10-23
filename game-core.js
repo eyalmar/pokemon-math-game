@@ -1464,10 +1464,50 @@ async function showLoadingAndFetch(idsToFetch, context) {
 }
 
 function updatePokedex() {
-    const pk = document.getElementById('pokedex'); if(!pk) return;
+    const pk = document.getElementById('pokedex'); 
+    if(!pk) return;
+    
     document.getElementById('pokemon-count').innerText = state.pokemons.length;
-    if(state.pokemons.length > 0) { const emptyMsg = document.getElementById('pokedex-empty'); if(emptyMsg) emptyMsg.style.display = 'none'; }
-    pk.innerHTML = state.pokemons.map(p => {
-        return `<div class="pokemon-card bounce-in text-center rarity-${p.rarity || 'common'}"><img src="${p.imgUrl}" class="w-16 h-16 mx-auto object-contain"><span class="block text-xs font-bold mt-2 uppercase" style="font-size: 10px;">${p.name}</span></div>`;
-    }).reverse().join('');
+    if(state.pokemons.length > 0) { 
+        const emptyMsg = document.getElementById('pokedex-empty'); 
+        if(emptyMsg) emptyMsg.style.display = 'none'; 
+    }
+
+    // 1. קיבוץ פוקימונים זהים וספירתם
+    const groupedPokemons = {};
+    state.pokemons.forEach(p => {
+        if (!groupedPokemons[p.id]) {
+            groupedPokemons[p.id] = { count: 0, data: p };
+        }
+        groupedPokemons[p.id].count++;
+    });
+
+    // 2. הפיכה למערך ומיון אלפביתי לפי שם הפוקימון (A-Z)
+    const sortedUniquePokemons = Object.values(groupedPokemons).sort((a, b) => {
+        return a.data.name.localeCompare(b.data.name);
+    });
+
+    // 3. רינדור הפוקימונים למסך עם אינדיקציית ערימה
+    pk.innerHTML = sortedUniquePokemons.map(item => {
+        const p = item.data;
+        const count = item.count;
+        
+        // תגית כמות אדומה בפינה (תוצג רק אם יש יותר מאחד)
+        const badgeHtml = count > 1 
+            ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold border-2 border-white shadow-md z-10">x${count}</div>` 
+            : '';
+            
+        // אפקט צל ויזואלי שנותן תחושה של "ערימת קלפים"
+        const stackStyle = count > 1 
+            ? 'box-shadow: 3px 3px 0px -1px rgba(0,0,0,0.1), 6px 6px 0px -2px rgba(0,0,0,0.05);' 
+            : '';
+
+        return `
+            <div class="pokemon-card bounce-in text-center rarity-${p.rarity || 'common'} relative" style="${stackStyle}">
+                ${badgeHtml}
+                <img src="${p.imgUrl}" class="w-16 h-16 mx-auto object-contain relative z-0">
+                <span class="block text-xs font-bold mt-2 uppercase truncate" style="font-size: 10px;">${p.name}</span>
+            </div>
+        `;
+    }).join('');
 }
